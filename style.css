@@ -1,0 +1,26 @@
+header {
+    padding: 0 0 0 2.5%;
+}
+button {
+    width: 5%;
+    height : 30px;
+}
+textarea {
+    resize: none;
+    margin: 1em;
+    padding: 10px;
+    font-size: 15px;
+}
+.box {
+    display:flex;
+}
+#outerbox {
+    flex-flow: column nowrap;
+    flex: 0 1 auto;
+    align-items: center;
+}
+#innerbox {
+    flex-flow: row nowrap;
+    flex: 0 1 auto;
+    align-items: center;
+}

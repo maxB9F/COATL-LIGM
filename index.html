@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>COATL</title>
+    <link rel="stylesheet" href="style.css" type="text/css">
+    <script>
+        function string_to_words(text) { //splits the string into words (includes digits, diacritics and mathematical characters)
+            const re = new RegExp("[(\p{P})|(\p{Z})]+"); //all punctuation and whitespaces, one or multiple times
+            return text.split(re); //the string is split according to the regular expression
+        }
+        function jaccard_distance(array1, array2) { //calculates the jaccard distance of two arrays (without taking into account multiple instances in the arrays)
+            var set1 = new Set(array1);
+            var set2 = new Set(array2);
+            var intersect = new Set();
+            for(var x of set1) if(set2.has(x)) intersect.add(x);
+            var union = new Set(set1);
+            for (var y of set2) union.add(y);
+            return 1 - (intersect.length)/(union.length);
+        }
+        function align(text_array1, text_array2) { //recursive, aligns two text arrays
+            if (text_array1.length>99 || text_array2.length.length>99) { //we need to divide even more before comparing words
+                var lvl2array1 = new Array(100);
+                var lvl2array2 = new Array(100); //the arrays which will host the newly divided arrays
+                var i = 0;
+                var j = 0;
+                while (i<text_array1.length) { //the process of dividing the arrays
+                    lvl2array1[j] = text_array1.slice(i,i+Math.ceil((text_array1.length-i)/(100-j))); //homogeneous split
+                    j++;
+                }
+                i = 0;
+                j = 0;
+                while (i<text_array2.length) {
+                    lvl2array2[j] = text_array2.slice(i,i+Math.ceil((text_array2.length-i)/(100-j)));
+                    j++;
+                }
+                var matrix = new Array(101); //the matrix for the Levenshtein distance
+                for (var i=0;i<101;i++) matrix[i] = new Array(101);
+                for (var i=0;i<101;i++) { //filling the matrix with the basic costs (replaced by the Jaccard distance between the sets)
+                    for (var j=0;j<101;j++) { //i represents the row and j the column
+                        if (j==0) matrix[i][j] = i;
+                        if (i==0) matrix[i][j] = j;
+                        if (i!=0 && j!=0) {
+                            matrix[i][j] = jaccard_distance(lvl2array1[i-1],lvl2array2[j-1]);
+                        }
+                    }
+                }
+                for (var i=1;i<101;i++) { //second step of filling the matrix
+                    for (var j=1;j<101;j++) {
+                        matrix[i][j] = Math.min(matrix[i-1][j]+1, matrix[i][j-1]+1, matrix[i-1][j-1]+matrix[i][j]);
+                    }
+                } //we now have the full matrix for both groups of a hundred arrays
+                
+            }
+            var matrix = new Array(text_array1.length+1);
+            for (var i=0;i<matrix.length;i++) matrix[i] = new Array(text_array2.length+1);
+            for (var i=0;i<matrix.length;i++) { //filling the matrix with the costs
+                for (var j=0;j<matrix[0].length;j++) {
+                    if (j==0) matrix[i][j] = i;
+                    if (i==0) matrix[i][j] = j;
+                    if (i!=0 && j!=0) {
+                        if (text_array1[i-1].localeCompare(text_array2[j-1])) matrix[i][j] = 0; //if the words are the same, the cost is 0
+                        else matrix[i][j] = 1; //else the cost is 1
+                    }
+                }
+            }
+            for (var i=0;i<matrix.length;i++) { //completing the matrix
+                for (var j=0;j<matrix[0].length;j++) {
+                    matrix[i][j] = Math.min(matrix[i-1][j]+1, matrix[i][j-1]+1, matrix[i-1][j-1]+matrix[i][j]);
+                }
+            } //we now have a completed matrix for calculation of Levenshtein distance on a word basis
+        }
+        document.addEventListener("DOMContentLoaded", function(){
+            //after the DOM has been loaded
+            var left_text = document.querySelector("#left_textarea").innerHTML; //scans the left textarea
+            var right_text = document.querySelector("#right_textarea").innerHTML; //scans the right textarea
+            document.querySelector("#align_button").addEventListener("click",function(){ //on click
+                align(string_to_words(left_text), string_to_words(right_text)); //splits the texts into words and aligns them
+            });
+        });
+    </script>
+</head>
+<body>
+    <header>
+        <h1>TITRE À METTRE</h1>
+    </header>
+
+    <div class="box" id="outerbox">
+        <div class="box" id="innerbox">
+            <textarea autocomplete="off" minlength="1" spellcheck="false" rows="40" cols="80" id="left_textarea"></textarea>
+            <textarea autocomplete="off" minlength="1" spellcheck="false" rows="40" cols="80" id="right_textarea"></textarea>
+        </div>
+        <button id="align_button" type="button"></button>
+    </div>
+
+    
+    
+    
+
+
+
+    <footer>
+
+    </footer>
+</body>
+</html>
