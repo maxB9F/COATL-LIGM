@@ -1,26 +1,79 @@
+* {
+    scroll-behavior: smooth;
+}
+
 header {
     padding: 0 0 0 2.5%;
 }
+
 button {
-    width: 5%;
-    height : 30px;
+    width: 90px;
+    height: 30px;
+    margin: 5px;
 }
+
 textarea {
     resize: none;
     margin: 1em;
-    padding: 10px;
-    font-size: 15px;
+    height: 47em;
+    width: 42em;
+    padding: 1em;
+    font-size: 16px;
 }
+
 .box {
     display:flex;
+    flex: 0 1 auto;
+    align-items: center;
 }
+
 #outerbox {
     flex-flow: column nowrap;
-    flex: 0 1 auto;
-    align-items: center;
 }
+
 #innerbox {
     flex-flow: row nowrap;
-    flex: 0 1 auto;
-    align-items: center;
+}
+
+.panel {
+    overflow-y: auto;
+    height: 47em;
+    width: 42.5em;
+    margin: 1em;
+    padding: 1em;
+    text-align: center;
+    font-size: 16px;
+    background-color: #222222;
+    color: white;
+}
+
+#left_panel {
+    direction: rtl;
+}
+
+.text_part {
+    direction: ltr;
+    display: inline-block;
+    width: 100%;
+    margin: 0.3em auto;
+}
+
+.text_part:hover {
+    text-decoration: underline white 2px;
+}
+
+.removed {
+    color: rgb(255, 84, 84);
+}
+
+.removed:hover {
+    text-decoration: underline rgb(255, 84, 84) 2px;
+}
+
+.added {
+
+}
+
+.changed {
+
 }

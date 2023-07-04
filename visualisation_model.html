@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>COATL</title>
+    <link rel="stylesheet" href="style.css" type="text/css">
+    <script>
+        var left_panel = document.getElementById("left_panel");
+        var right_panel = document.getElementById("right_panel");
+        function scroll_to_id(block_id, direction) { //scrolls to a certain block id on both sides
+            var left_block = document.getElementById("l_"+block_id);
+            var right_block = document.getElementById("r_"+block_id);
+            if (left_block!=null && right_block!=null) {
+                if (direction=="l") { //clicked on a block on the left
+                    //right_panel.scrollTop = right_block.offsetTop + left_block.offsetTop - left_panel.scrollTop;
+                    //right_block.scrollTop = left_block.offsetTop;
+                    right_panel.scrollTop = left_panel.scrollTop;
+                }
+                else { //clicked on a block on the right
+                    //left_panel.scrollTop = left_block.offsetTop + right_block.offsetTop - right_panel.scrollTop;
+                    left_block.scrollTop = right_block.offsetTop;
+                }                
+            }
+        }
+        document.addEventListener("DOMContentLoaded", function(){
+            //after the DOM has been loaded
+            document.querySelectorAll(".text_part").forEach(item => {
+                item.addEventListener("click",function(){
+                    scroll_to_id(item.id.slice(2),item.id[0]);
+                });
+            });
+        });
+    </script>
+</head>
+<body>
+    <header>
+        <h1>TITRE À METTRE</h1>
+    </header>
+
+    <div class="box" id="outerbox">
+        <div class="box" id="innerbox">
+            <div class="panel" id="left_panel">
+                <div class="text_part">1 blanditiis praesentium</div>
+                <div class="text_part">2 blanditiis praesentium</div>
+                <div class="text_part">3 blanditiis praesentium</div>
+                <div class="text_part">4 blanditiis praesentium</div>
+                <div class="text_part">5 blanditiis praesentium</div>
+                <div class="text_part">6 blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part" id="l_234">this one</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+            </div>
+            <div class="panel" id="right_panel">
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part"> quo minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis dolor repellendus. Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibu</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio. Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis dolor repellendus. Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet</div>
+                <div class="text_part">voluptatibus maiores alias consequatur</div>
+                <div class="text_part">oribus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae. Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores alias consequatur aut perferendis doloribus asperiores repellat.At vero eos et accusamus et iusto odio dignissimos</div>
+                <div class="text_part">um hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores alias consequatur aut perferendis doloribus asperiores repellat.At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio. Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis dolor repellendus. Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae. Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores alias consequatur aut perferendis doloribus asperiores repellat.At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio. Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis dolor repellendus. Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae. Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores alias consequatur aut perferendis doloribus asperiores repellat.At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi, id est laboru</div>
+                <div class="text_part removed">necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae. Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores alias consequatur</div>
+                <div class="text_part"></div>
+                <div class="text_part">eligendi optio</div>
+                <div class="text_part" id="r_234">this one</div>
+                <div class="text_part">eligendi optio</div>
+                <div class="text_part">eligendi optio</div>
+                <div class="text_part">eligendi optio</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+                <div class="text_part">blanditiis praesentium</div>
+            </div>
+        </div>
+        <div class="box" id="innerbox">
+            <button id="reset_button" type="button">Reset</button>
+            <button id="export_button" type="button">Export</button>
+        </div>
+    </div>
+
+
+    <footer>
+    </footer>
+</body>
+</html>

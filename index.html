@@ -5,36 +5,33 @@
     <title>COATL</title>
     <link rel="stylesheet" href="style.css" type="text/css">
     <script>
+        const re = new RegExp("[(\p{P})|(\p{Z})]+"); //all punctuation and whitespaces, one or multiple times
+        var left_panel = document.getElementById("left_panel");
+        var right_panel = document.getElementById("right_panel");
+        var cost_dict = {};
         function string_to_words(text) { //splits the string into words (includes digits, diacritics and mathematical characters)
-            const re = new RegExp("[(\p{P})|(\p{Z})]+"); //all punctuation and whitespaces, one or multiple times
             return text.split(re); //the string is split according to the regular expression
         }
         function jaccard_distance(array1, array2) { //calculates the jaccard distance of two arrays (without taking into account multiple instances in the arrays)
-            var set1 = new Set(array1);
-            var set2 = new Set(array2);
+            let set1 = new Set(array1);
+            let set2 = new Set(array2);
             var intersect = new Set();
             for(var x of set1) if(set2.has(x)) intersect.add(x);
             var union = new Set(set1);
             for (var y of set2) union.add(y);
             return 1 - (intersect.length)/(union.length);
         }
-        function align(text_array1, text_array2) { //recursive, aligns two text arrays
-            if (text_array1.length>99 || text_array2.length.length>99) { //we need to divide even more before comparing words
+        function align(text_array1, text_array2, absolute_x, absolute_y) { //recursive, aligns two text arrays
+            if (text_array1.length>99 && text_array2.length.length>99) { //we need to divide even more before comparing words
                 var lvl2array1 = new Array(100);
                 var lvl2array2 = new Array(100); //the arrays which will host the newly divided arrays
-                var i = 0;
-                var j = 0;
-                while (i<text_array1.length) { //the process of dividing the arrays
-                    lvl2array1[j] = text_array1.slice(i,i+Math.ceil((text_array1.length-i)/(100-j))); //homogeneous split
-                    j++;
+                for (var j=0;j<100;j++) { //the process of homogeneously dividing the arrays
+                    let block_size_1 = text_array1.length/100; //the average size of a block
+                    let block_size_2 = text_array2.length/100;
+                    lvl2array1[j] = text_array1.slice(Math.floor(j*block_size_1),Math.floor((j+1)*block_size_1));
+                    lvl2array2[j] = text_array2.slice(Math.floor(j*block_size_2),Math.floor((j+1)*block_size_2));
                 }
-                i = 0;
-                j = 0;
-                while (i<text_array2.length) {
-                    lvl2array2[j] = text_array2.slice(i,i+Math.ceil((text_array2.length-i)/(100-j)));
-                    j++;
-                }
-                var matrix = new Array(101); //the matrix for the Levenshtein distance
+                let matrix = new Array(101); //the matrix for the Levenshtein distance
                 for (var i=0;i<101;i++) matrix[i] = new Array(101);
                 for (var i=0;i<101;i++) { //filling the matrix with the basic costs (replaced by the Jaccard distance between the sets)
                     for (var j=0;j<101;j++) { //i represents the row and j the column
@@ -50,25 +47,149 @@
                         matrix[i][j] = Math.min(matrix[i-1][j]+1, matrix[i][j-1]+1, matrix[i-1][j-1]+matrix[i][j]);
                     }
                 } //we now have the full matrix for both groups of a hundred arrays
-                
+                var cost = -1; //the variable used to select the best path
+                var x = 100; //the x and y coordinates to go through the matrix we just made
+                var y = 100; //we need to lower them by 1 to access the lvl 2 arrays are they're 100 blocks long compared to the 101*101 matrix
+                var x_for_align = absolute_x+text_array2.length-lvl2array2[x-1].length; //the absolute x and y coordinates we'll give to the descending align functions
+                var y_for_align = absolute_y+text_array1.length-lvl2array1[y-1].length;
+                align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align); //we first align the bottom right corner
+                while (cost!=0) {
+                    if (matrix[y-1][x-1]<=matrix[y-1][x] ) { //diagonal smaller than top
+                        if (matrix[y-1][x-1]<=matrix[y][x-1]) { //diagonal smaller than both
+                            x-=1;
+                            y-=1; //we go in diagonal;
+                            x_for_align-=lvl2array2[x-1].length; //we shift the absolute coordinates diagonally
+                            y_for_align-=lvl2array1[y-1].length;
+                            align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align); //we align the three surrounding blocks to avoid bottlenecks
+                            // align(lvl2array1[y],lvl2array2[x-1],x_for_align,y_for_align+lvl2array1[y-1].length);
+                            // align(lvl2array1[y-1],lvl2array2[x],x_for_align+lvl2array2[x-1].length,y_for_align);
+                            cost = matrix[y][x]; //we update the cost;
+                            continue;
+                        }
+                        //left smaller than both
+                        x-=1; //we go left
+                        absolute_x-=lvl2array2[x-1].length; //we shift the absolute coordinates left
+                        align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align); //we align the left block
+                        cost = matrix[y][x]; //we update the cost
+                        continue;
+                    }
+                    //top smaller than diagonal
+                    if (matrix[y][x-1]<=matrix[y-1][x]) { //left smaller than both
+                        x-=1;
+                        absolute_x-=lvl2array2[x-1].length;
+                        align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align);
+                        cost = matrix[y][x];
+                        continue;
+                    }
+                    //top smaller than both
+                    y-=1;
+                    absolute_y-=lvl2array1[y-1].length;
+                    align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align);
+                    cost = matrix[y][x];
+                    continue;
+                }
             }
-            var matrix = new Array(text_array1.length+1);
-            for (var i=0;i<matrix.length;i++) matrix[i] = new Array(text_array2.length+1);
-            for (var i=0;i<matrix.length;i++) { //filling the matrix with the costs
-                for (var j=0;j<matrix[0].length;j++) {
-                    if (j==0) matrix[i][j] = i;
-                    if (i==0) matrix[i][j] = j;
-                    if (i!=0 && j!=0) {
-                        if (text_array1[i-1].localeCompare(text_array2[j-1])) matrix[i][j] = 0; //if the words are the same, the cost is 0
-                        else matrix[i][j] = 1; //else the cost is 1
+            else {
+                var matrix = new Array(text_array1.length+1);
+                for (var i=0;i<matrix.length;i++) matrix[i] = new Array(text_array2.length+1);
+                for (var i=0;i<matrix.length;i++) { //filling the matrix with the costs
+                    for (var j=0;j<matrix[0].length;j++) {
+                        if (j==0) {
+                            matrix[i][j] = i;
+                            cost_dict[String(absolute_x)+","+String(absolute_y+i)] = i;
+                        }
+                        if (i==0) {
+                            matrix[i][j] = j;
+                            cost_dict[String(absolute_x+j)+","+String(absolute_y)] = j;
+                        }
+                        if (i!=0 && j!=0) {
+                            if (text_array1[i-1] == text_array2[j-1]) matrix[i][j] = 0; //if the words are the same, the cost is 0
+                            else matrix[i][j] = 1; //else the cost is 1
+                        }
+                    }
+                }
+                for (var i=1;i<matrix.length;i++) { //completing the matrix
+                    for (var j=1;j<matrix[0].length;j++) {
+                        matrix[i][j] = Math.min(matrix[i-1][j]+1, matrix[i][j-1]+1, matrix[i-1][j-1]+matrix[i][j]);
+                        cost_dict[String(absolute_x+j)+","+String(absolute_y+i)] = matrix[i][j];
+                    }
+                }
+                //we now have a completed matrix for calculation of Levenshtein distance on a word basis
+                //to make sure that words that were not moved but shifted by adding or removing words earlier in the text,
+                //we first need to make out the best path and then go through it again to display it
+                //we also need to have a unique id for each text block
+                //a .text_part div represents a block that's either :
+                //  common to both sides (changed/unchanged), in which case there's a block on the other side with the same id
+                //  unique to one of the sides (added/removed), in which case there's no block on the other side with the same id
+            }
+            //steps of going through the whole text :
+                // start out with the bottom right coordinates
+                // then, until we reach the top left :
+                    // check for existence in the three neighbours
+                    // pick the least costly one
+                    // save the word & it's state (removed, added, changed/unchanged)
+                    // change the coordinates
+                    // when you reach a corner, go to the top left right away
+                // if need be, now is the time to analyse the changed words
+                // we can now display the results    
+        }
+        function make_out_path(dict,text_array1,text_array2) { //return array of couples (size 2 arrays) of strings
+            var result_array = new Array();
+            var x = text_array2.length;
+            var y = text_array1.length;
+            var i = -1; //cursor in result_array
+            while (x!=0 && y!=0) {
+                i++;
+                result_array.push(new Array(2));
+                let diagonal_key = String(x-1)+","+String(y-1);
+                let left_key = String(x-1)+","+String(y);
+                let top_key = String(x)+","+String(y-1);
+                if (diagonal_key in dict) {let diagonal_value = dict[diagonal_key];}
+                if (left_key in dict) {let left_value=dict[left_key];}
+                if (top_key in dict) {let top_value=dict[top_key];}
+                if (diagonal_value==null) { //on a border
+                    if (left_value==null) { //we have to go up
+                        continue;
+                    }
+                    else { //we have to go left
+                        continue;
+                    }
+                }
+                else { //not on a border, we have to compare the three paths
+                    if (left_value <= top_value && left_value < diagonal_value) { //automatic left
+                        continue;
+                    }
+                    if (top_value <= left_value && top_value < diagonal_value) { //if not, automatic right
+                        continue;
+                    }
+                    //now we have diagonal_value <= min(top_value, left_value)
+                    //we have to consider the three directions
+                    if (text_array1[y] == text_array2[x]) { //the two words are the same, automatic diagonal
+                        continue;
+                    }
+                    if (diagonal_value < top_value && diagonal_value < left_value) { //the diagonal is the best choice, automatic diagonal
+                        continue;
+                    }
+                    if (left_value <= top_value) { //we go left
+                        continue;
+                    }
+                    else { //we go up
+                        continue;
                     }
                 }
             }
-            for (var i=0;i<matrix.length;i++) { //completing the matrix
-                for (var j=0;j<matrix[0].length;j++) {
-                    matrix[i][j] = Math.min(matrix[i-1][j]+1, matrix[i][j-1]+1, matrix[i-1][j-1]+matrix[i][j]);
+        }
+        function scroll_to_id(block_id, direction) { //scrolls to a certain block id on both sides
+            var left_block = document.getElementById("l_"+block_id);
+            var right_block = document.getElementById("r_"+block_id);
+            if (left_block!=null && right_block!=null) {
+                if (direction=="l") { //clicked on a block on the left
+                    right_panel.scrollTop = right_block.offsetTop //+ left_block.offsetTop - left_panel.scrollTop;
                 }
-            } //we now have a completed matrix for calculation of Levenshtein distance on a word basis
+                else { //clicked on a block on the right
+                    left_panel.scrollTop = left_block.offsetTop //+ right_block.offsetTop - right_panel.scrollTop;
+                }                
+            }
         }
         document.addEventListener("DOMContentLoaded", function(){
             //after the DOM has been loaded
@@ -90,7 +211,7 @@
             <textarea autocomplete="off" minlength="1" spellcheck="false" rows="40" cols="80" id="left_textarea"></textarea>
             <textarea autocomplete="off" minlength="1" spellcheck="false" rows="40" cols="80" id="right_textarea"></textarea>
         </div>
-        <button id="align_button" type="button"></button>
+        <button id="align_button" type="button">Align</button>
     </div>
 
     
