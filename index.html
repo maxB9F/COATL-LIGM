@@ -5,12 +5,12 @@
     <title>COATL</title>
     <link rel="stylesheet" href="style.css" type="text/css">
     <script>
-        const re = new RegExp("[(\p{P})|(\p{Z})]+"); //all punctuation and whitespaces, one or multiple times
+        const punct_whitespace = new RegExp("[(\p{P})|(\p{Z})]+"); //all punctuation and whitespaces, one or multiple times
+        const words = new RegExp("[^(\p{P})|(\p{Z})]+");
         var left_panel = document.getElementById("left_panel");
         var right_panel = document.getElementById("right_panel");
-        var cost_dict = {};
         function string_to_words(text) { //splits the string into words (includes digits, diacritics and mathematical characters)
-            return text.split(re); //the string is split according to the regular expression
+            return text.split(punct_whitespace); //the string is split according to the regular expression
         }
         function jaccard_distance(array1, array2) { //calculates the jaccard distance of two arrays (without taking into account multiple instances in the arrays)
             let set1 = new Set(array1);
@@ -21,7 +21,14 @@
             for (var y of set2) union.add(y);
             return 1 - (intersect.length)/(union.length);
         }
-        function align(text_array1, text_array2, absolute_x, absolute_y) { //recursive, aligns two text arrays
+
+        function create_dict (text_array1, text_array2) {
+            var cost_dict = {};
+            align(text_array1, text_array2, 0, 0, 0, cost_dict); //splits the texts into words and aligns them
+            return cost_dict;
+        }
+
+        function align(text_array1, text_array2, absolute_x, absolute_y, block_id,dict) { //recursive, aligns two text arrays
             if (text_array1.length>99 && text_array2.length.length>99) { //we need to divide even more before comparing words
                 var lvl2array1 = new Array(100);
                 var lvl2array2 = new Array(100); //the arrays which will host the newly divided arrays
@@ -53,14 +60,17 @@
                 var x_for_align = absolute_x+text_array2.length-lvl2array2[x-1].length; //the absolute x and y coordinates we'll give to the descending align functions
                 var y_for_align = absolute_y+text_array1.length-lvl2array1[y-1].length;
                 align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align); //we first align the bottom right corner
+                var id_plus = 0;
                 while (cost!=0) {
+                    id_plus++;
+                    let new_id = block_id*1000+id_plus;
                     if (matrix[y-1][x-1]<=matrix[y-1][x] ) { //diagonal smaller than top
                         if (matrix[y-1][x-1]<=matrix[y][x-1]) { //diagonal smaller than both
                             x-=1;
                             y-=1; //we go in diagonal;
                             x_for_align-=lvl2array2[x-1].length; //we shift the absolute coordinates diagonally
                             y_for_align-=lvl2array1[y-1].length;
-                            align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align); //we align the three surrounding blocks to avoid bottlenecks
+                            align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align,new_id); //we align the three surrounding blocks to avoid bottlenecks
                             // align(lvl2array1[y],lvl2array2[x-1],x_for_align,y_for_align+lvl2array1[y-1].length);
                             // align(lvl2array1[y-1],lvl2array2[x],x_for_align+lvl2array2[x-1].length,y_for_align);
                             cost = matrix[y][x]; //we update the cost;
@@ -69,7 +79,7 @@
                         //left smaller than both
                         x-=1; //we go left
                         absolute_x-=lvl2array2[x-1].length; //we shift the absolute coordinates left
-                        align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align); //we align the left block
+                        align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align,new_id); //we align the left block
                         cost = matrix[y][x]; //we update the cost
                         continue;
                     }
@@ -77,14 +87,14 @@
                     if (matrix[y][x-1]<=matrix[y-1][x]) { //left smaller than both
                         x-=1;
                         absolute_x-=lvl2array2[x-1].length;
-                        align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align);
+                        align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align,new_id);
                         cost = matrix[y][x];
                         continue;
                     }
                     //top smaller than both
                     y-=1;
                     absolute_y-=lvl2array1[y-1].length;
-                    align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align);
+                    align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align,new_id);
                     cost = matrix[y][x];
                     continue;
                 }
@@ -96,22 +106,22 @@
                     for (var j=0;j<matrix[0].length;j++) {
                         if (j==0) {
                             matrix[i][j] = i;
-                            cost_dict[String(absolute_x)+","+String(absolute_y+i)] = i;
+                            dict[String(absolute_x)+","+String(absolute_y+i)] = [i,block_id];
                         }
                         if (i==0) {
                             matrix[i][j] = j;
-                            cost_dict[String(absolute_x+j)+","+String(absolute_y)] = j;
+                            dict[String(absolute_x+j)+","+String(absolute_y)] = [j,block_id];
                         }
                         if (i!=0 && j!=0) {
-                            if (text_array1[i-1] == text_array2[j-1]) matrix[i][j] = 0; //if the words are the same, the cost is 0
-                            else matrix[i][j] = 1; //else the cost is 1
+                            if (text_array1[i-1] == text_array2[j-1]) matrix[i][j] = [0,block_id]; //if the words are the same, the cost is 0
+                            else matrix[i][j] = [1,block_id]; //else the cost is 1
                         }
                     }
                 }
                 for (var i=1;i<matrix.length;i++) { //completing the matrix
                     for (var j=1;j<matrix[0].length;j++) {
                         matrix[i][j] = Math.min(matrix[i-1][j]+1, matrix[i][j-1]+1, matrix[i-1][j-1]+matrix[i][j]);
-                        cost_dict[String(absolute_x+j)+","+String(absolute_y+i)] = matrix[i][j];
+                        dict[String(absolute_x+j-1)+","+String(absolute_y+i-1)][0] = matrix[i][j];
                     }
                 }
                 //we now have a completed matrix for calculation of Levenshtein distance on a word basis
@@ -133,6 +143,11 @@
                 // if need be, now is the time to analyse the changed words
                 // we can now display the results    
         }
+
+        //other way to do it : array of [levenshtein matrix, relative position to previous matrix] in order
+        //to make separate code according to the direction of the next array
+        //e.g. if next array is left of current array, have the least priority for "up"
+
         function make_out_path(dict,text_array1,text_array2) { //return array of couples (size 2 arrays) of strings
             var result_array = new Array();
             var x = text_array2.length;
@@ -141,12 +156,16 @@
             while (x!=0 && y!=0) {
                 i++;
                 result_array.push(new Array(2));
+                let current_key = String(x)+","+String(y);
                 let diagonal_key = String(x-1)+","+String(y-1);
                 let left_key = String(x-1)+","+String(y);
                 let top_key = String(x)+","+String(y-1);
-                if (diagonal_key in dict) {let diagonal_value = dict[diagonal_key];}
-                if (left_key in dict) {let left_value=dict[left_key];}
-                if (top_key in dict) {let top_value=dict[top_key];}
+                var diagonal_value = null;
+                var left_value = null;
+                var top_value = null;
+                if (diagonal_key in dict) {diagonal_value = dict[diagonal_key][0];}
+                if (left_key in dict) {left_value=dict[left_key][0];}
+                if (top_key in dict) {top_value=dict[top_key][0];}
                 if (diagonal_value==null) { //on a border
                     if (left_value==null) { //we have to go up
                         continue;
@@ -156,10 +175,24 @@
                     }
                 }
                 else { //not on a border, we have to compare the three paths
+                    if (dict[left_key][1]!=dict[current_key][1]) { //going left means going to a different block
+                        if (text_array1[y] == text_array2[x]) { //the two words are the same, automatic diagonal
+                            continue;
+                        }
+                        //automatic left
+                        continue;
+                    }
+                    if (dict[top_key][1]!=dict[current_key][1]) { //going up means going to a different block
+                        if (text_array1[y] == text_array2[x]) { //the two words are the same, automatic diagonal
+                            continue;
+                        }
+                        //automatic up
+                        continue;
+                    }
                     if (left_value <= top_value && left_value < diagonal_value) { //automatic left
                         continue;
                     }
-                    if (top_value <= left_value && top_value < diagonal_value) { //if not, automatic right
+                    if (top_value <= left_value && top_value < diagonal_value) { //if not, automatic up
                         continue;
                     }
                     //now we have diagonal_value <= min(top_value, left_value)
@@ -178,7 +211,75 @@
                     }
                 }
             }
+            return result_array;
         }
+
+        function bring_text_back(text_array, text1, text2) {
+            //put the punctuation of both texts into arrays
+            var punct_array_1 = text1.split(words);
+            var punct_array_2 = text2.split(words);
+            var pt_1 = 0;
+            var pt_2 = 0;
+            //have a for int loop in text_array :
+            for (var i=0;i<0;i++) {
+                if (i==text_array.length) {
+                    let last_punct = new Array(2);
+                    if (pt_1<punct_array_1.length) last_punct[0] = punct_array_1[pt_1];
+                    if (pt_2<punct_array_2.length) last_punct[1] = punct_array_2[pt_2];
+                    if (last_punct[0]!=null || last_punct[1]!=null) text_array.push(last_punct);
+                    return text_array; 
+                }
+                var current_type = (text_array[i][0]==null) ? added : (text_array[i][1]==null) ? removed : normal;
+                var next_type = (text_array[i+1][0]==null) ? added : (text_array[i+1][1]==null) ? removed : normal;
+                if (current_type == "normal" || current_type == "added") {
+                    text_array[i][1].concat(punct_array_2[pt_2]);
+                    pt_2++;
+                    if (current_type == next_type) {
+                        text_array[i+1][0] = text_array[i][0].concat(text_array[i+1][0]);
+                        text_array[i][0] = null;
+                    }
+                }
+                if (current_type == "normal" || current_type == "removed") {
+                    text_array[i][0].concat(punct_array_1[pt_1]);
+                    pt_1++;
+                    if (current_type == next_type) {
+                        text_array[i+1][1] = text_array[i][1].concat(text_array[i+1][1]);
+                        text_array[i][1] = null;
+                    }
+                }
+            }
+        }
+
+        function create_div(text_part, type, id, side) {
+            //type, id and side need to already be formated, ex : create_div("example text.", "removed", "l_234", "left_panel")
+            const new_div = document.createElement("div");
+            new_div.classList.add("text_part");
+            if (type!=null) new_div.classList.add(type);
+            new_div.id = id;
+            const text = document.createTextNode(text_part);
+            document.getElementById(side).appendChild(new_div);
+        }
+
+        function make_divs(text_array) {
+            var div_id = 0;
+            for (couple in text_array) {
+                if (couple[0] == null && couple[1] == null) continue;
+                if (couple[1] == null) {
+                    create_div(couple[0],"removed","l_"+String(id),"left_panel");
+                    id++;
+                    continue;
+                }
+                if (couple[0] == null) {
+                    create_div(couple[1],"added","r_"+String(id),"right_panel");
+                    id++;
+                    continue;
+                }
+                create_div(couple[0],null,"l_"+String(id),"left_panel");
+                create_div(couple[1],null,"r_"+String(id),"right_panel");
+                id++;
+            }
+        }
+
         function scroll_to_id(block_id, direction) { //scrolls to a certain block id on both sides
             var left_block = document.getElementById("l_"+block_id);
             var right_block = document.getElementById("r_"+block_id);
@@ -191,37 +292,84 @@
                 }                
             }
         }
+        function change_to_loading_screen() {
+            document.querySelectorAll("textarea").forEach(element => {
+                element.style.display = "none";
+            });
+            document.querySelector("#align_button").style.display = "none";
+            var loader = document.querySelector("#loader")
+            loader.style.display = "block";
+            var op = 0.1;  // initial opacity
+            var timer = setInterval(function () {
+                if (op >= 1){
+                clearInterval(timer);
+            }
+            loader.style.opacity = op;
+            loader.style.filter = 'alpha(opacity=' + op * 50 + ")";
+            op += op * 0.1;
+            }, 20);
+
+        }
         document.addEventListener("DOMContentLoaded", function(){
             //after the DOM has been loaded
             var left_text = document.querySelector("#left_textarea").innerHTML; //scans the left textarea
             var right_text = document.querySelector("#right_textarea").innerHTML; //scans the right textarea
             document.querySelector("#align_button").addEventListener("click",function(){ //on click
-                align(string_to_words(left_text), string_to_words(right_text)); //splits the texts into words and aligns them
+                //remove visibility of button and interaction with textareas
+                change_to_loading_screen();
+
+
+                var text_array1 = string_to_words(left_text);
+                var text_array2 = string_to_words(right_text);
+                var cost_dict = create_dict(text_array1, text_array2);
+                //now that we have the dict, we can use make_out_path
+                path_text_array = make_out_path(cost_dict, text_array1, text_array2);
+                //then bring_text_back to fuse the groups and add punctuation
+                bring_text_back(path_text_array, left_text, right_text);
+                //then make divs to create the divs inside of the panels
+                make_divs(path_text_array);
+                
+                
+                
+                
+                
+                
+                //then add the event listeners for panel sync
+                //then we have to change page setup
+                //tadaaaaaa
             });
         });
     </script>
 </head>
 <body>
     <header>
-        <h1>TITRE À METTRE</h1>
+        <div id="logo_div">
+            <a href="./index.html" id="logo_anchor">
+                <img width="286" height="120" src="https://siteigm.univ-mlv.fr/wp-content/uploads/2021/10/LIGM-CMJN-couleurs-300dpi-1.png" alt="Laboratoire d'Informatique Gaspard-Monge UMR 8049" decoding="async">
+            </a>
+        </div>
+        <div id="titlediv">
+            <h1>nom de l'outil (à déterminer)</h1>
+        </div>
+        <div id="links">
+            <ul id="links_list">
+                <li><a href="https://siteigm.univ-mlv.fr/" target="_blank">Site du LIGM</a></li>
+                <li>à propos du site</li>
+                <li>english version</li>
+            </ul>
+        </div>
     </header>
-
     <div class="box" id="outerbox">
         <div class="box" id="innerbox">
-            <textarea autocomplete="off" minlength="1" spellcheck="false" rows="40" cols="80" id="left_textarea"></textarea>
-            <textarea autocomplete="off" minlength="1" spellcheck="false" rows="40" cols="80" id="right_textarea"></textarea>
+            <textarea autocomplete="off" minlength="1" spellcheck="false" id="left_textarea" placeholder="La première version du texte"></textarea>
+            <textarea autocomplete="off" minlength="1" spellcheck="false" id="right_textarea" placeholder="La seconde version du texte"></textarea>
         </div>
-        <button id="align_button" type="button">Align</button>
+        <div class="box" id="button_box">
+            <button id="align_button" type="button">Align</button>
+        </div>
     </div>
-
-    
-    
-    
-
-
-
-    <footer>
-
+    <footer>(nom de l'outil) (contact: insérer mailto:)
     </footer>
+    <img src="./logoIGM-300x298.png" id="loader">
 </body>
 </html>

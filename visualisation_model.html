@@ -7,29 +7,6 @@
     <script>
         var left_panel = document.getElementById("left_panel");
         var right_panel = document.getElementById("right_panel");
-        function scroll_to_id(block_id, direction) { //scrolls to a certain block id on both sides
-            var left_block = document.getElementById("l_"+block_id);
-            var right_block = document.getElementById("r_"+block_id);
-            if (left_block!=null && right_block!=null) {
-                if (direction=="l") { //clicked on a block on the left
-                    //right_panel.scrollTop = right_block.offsetTop + left_block.offsetTop - left_panel.scrollTop;
-                    //right_block.scrollTop = left_block.offsetTop;
-                    right_panel.scrollTop = left_panel.scrollTop;
-                }
-                else { //clicked on a block on the right
-                    //left_panel.scrollTop = left_block.offsetTop + right_block.offsetTop - right_panel.scrollTop;
-                    left_block.scrollTop = right_block.offsetTop;
-                }                
-            }
-        }
-        document.addEventListener("DOMContentLoaded", function(){
-            //after the DOM has been loaded
-            document.querySelectorAll(".text_part").forEach(item => {
-                item.addEventListener("click",function(){
-                    scroll_to_id(item.id.slice(2),item.id[0]);
-                });
-            });
-        });
     </script>
 </head>
 <body>
