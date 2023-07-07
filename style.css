@@ -90,8 +90,9 @@ textarea {
     flex-flow: column nowrap;
     height: auto;
     width: 100%;
-    position: fixed;
+    position: absolute;
     left: 0;
+    right: 0;
     bottom: 80px;
     top: 130px;
 }
@@ -99,8 +100,9 @@ textarea {
 #innerbox {
     flex-flow: row nowrap;
     padding: 0 3em;
-    flex: 0 1 100%;
-    align-self: stretch
+    min-height: 0;
+    flex: 0 10 100%;
+    align-self: stretch;
 }
 
 #button_box {
@@ -116,8 +118,9 @@ textarea {
 }
 
 #loader {
-    display:none;
+    display: block;
     opacity: 0;
+    z-index: -10;
     animation: spin 6s cubic-bezier(.17,.67,.83,.67) infinite;
     position:absolute;
     top:0;
@@ -129,26 +132,34 @@ textarea {
 
 .panel {
     display: flex;
-    flex-flow: row-reverse wrap-reverse;
-    overflow-y: scroll;
-    text-align: center;
-    background-color: #222222;
-    color: white;
+    flex-flow: row wrap;
+    overflow-y: auto;
+    background-color: white;
+    height: auto;
+    width: auto;
+    justify-content: left;
+    align-items: baseline;
 }
 
 #left_panel {
     direction: rtl;
+    flex-flow: row-reverse wrap;
 }
 
 .text_part {
     direction: ltr;
-    display: block;
-    flex: 0 0 auto;
-    margin: 0.3em auto;
+    display: inline-block;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    min-width: 0;
+    min-height: 0;
+    height: auto;
+    flex: 0 1 100%;
+    color: rgb(40,40,40);
 }
 
 .text_part:hover {
-    text-decoration: underline white 2px;
+    text-decoration: underline black 2px;
 }
 
 .removed {
@@ -156,7 +167,19 @@ textarea {
 }
 
 .removed:hover {
-    text-decoration: underline rgb(255, 84, 84) 2px;
+    text-decoration: none;
+    color: rgb(240,240,240);
+    background-color: rgb(255, 165, 165);
+}
+
+.added {
+    color: rgb(42, 205, 255);
+}
+
+.added:hover {
+    text-decoration: none;
+    color: rgb(240,240,240);
+    background-color: rgb(141, 226, 255);
 }
 
 #reset_button, #export_button {

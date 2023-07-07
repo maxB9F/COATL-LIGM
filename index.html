@@ -4,6 +4,9 @@
     <meta charset="utf-8">
     <title>COATL</title>
     <link rel="stylesheet" href="style.css" type="text/css">
+    <script src='https://cdn.jsdelivr.net/gh/duhaime/minhash@master/minhash.min.js'>
+        //check license (MIT) if this is kept
+    </script>
     <script>
         /*var punct_whitespace = XRegExp("[(\p{P})|(\p{Z})]+"); //all punctuation and whitespaces, one or multiple times
         var words = XRegExp("[^(\p{P})|(\p{Z})]+");*/
@@ -13,17 +16,37 @@
             return text.split(/[^\p{Script=Latin}]+/u); //the string is split according to the regular expression
         }
         function jaccard_distance(array1, array2) { //calculates the jaccard distance of two arrays (without taking into account multiple instances in the arrays)
-            let set1 = new Set(array1);
+            /*let set1 = new Set(array1);
             let set2 = new Set(array2);
             let intersect = new Set();
             for(var x of set1) if(set2.has(x)) intersect.add(x);
             let union = new Set(set1);
             for (var y of set2) union.add(y);
-            return 1 - (intersect.length)/(union.length);
+            return 1.0 - (intersect.length)/(union.length);*/
+            var m1 = new Minhash();
+            var m2 = new Minhash();
+            array1.map(function(w) {m1.update(w)});
+            array2.map(function(w) {m2.update(w)});
+            return 1 - m1.jaccard(m2);
         }
 
+        /*function minHash1(array1, array2) {
+
+        }
+
+        function minHash100(array1, array2) { //calculates all jaccard distances between two arrays of 100 arrays of words and puts them in a dict
+            let result_dict = {};
+            for (var i=0;i<100;i++) {
+                for (var j=i;j<100;j++) {
+                    result_dict[String(i)+","+String(j)] = minHash1(array1[i],array2[i]);
+                    result_dict[String(j)+","+String(i)] = result_dict[String(i)+","+String(j)];
+                }
+            }
+            return result_dict
+        }*/
+
         function align(text_array1, text_array2, absolute_x, absolute_y,dict) { //recursive, aligns two text arrays
-            /*if (text_array1.length>99 && text_array2.length>99) { //we need to divide even more before comparing words
+            if (text_array1.length>9999 && text_array2.length>9999) { //we need to divide even more before comparing words
                 let lvl2array1 = new Array(100);
                 let lvl2array2 = new Array(100); //the arrays which will host the newly divided arrays
                 for (var j=0;j<100;j++) { //the process of homogeneously dividing the arrays
@@ -32,96 +55,69 @@
                     lvl2array1[j] = text_array1.slice(Math.floor(j*block_size_1),Math.floor((j+1)*block_size_1));
                     lvl2array2[j] = text_array2.slice(Math.floor(j*block_size_2),Math.floor((j+1)*block_size_2));
                 }
-                console.log(lvl2array1);
                 //we have two arrays of the text arrays divided into 100 each, we can use them to calculate levenshtein distance as well as the best path
                 let matrix = new Array(101); //the matrix for the Levenshtein distance
-                for (var i=0;i<101;i++) matrix[i] = new Array(101);
                 for (var i=0;i<101;i++) { //filling the matrix with the basic costs (replaced by the Jaccard distance between the sets)
-                    for (var j=0;j<101;j++) { //i represents the row and j the column
-                        if (j==0) matrix[i][j] = i;
-                        if (i==0) matrix[i][j] = j;
-                        if (i!=0 && j!=0) {
-                            matrix[i][j] = jaccard_distance(lvl2array1[i-1],lvl2array2[j-1]);
-                        }
-                    }
+                    matrix[i] = new Array(101);
+                    for (var j=0;j<101;j++) matrix[i][j] = (j==0) ? i : (i==0) ? j : (matrix[j]) ? matrix[j][i] : jaccard_distance(lvl2array1[i-1],lvl2array2[j-1]);
+                    console.log("cost : "+matrix[i][j]);
                 }
-                for (var i=1;i<101;i++) { //second step of filling the matrix
-                    for (var j=1;j<101;j++) {
-                        matrix[i][j] = Math.min(matrix[i-1][j]+1, matrix[i][j-1]+1, matrix[i-1][j-1]+matrix[i][j]);
-                    }
-                }
+                //we then have the second step (cost propagation)
+                for (var i=1;i<101;i++) for (var j=1;j<101;j++) matrix[i][j] = Math.min(matrix[i-1][j]+1, matrix[i][j-1]+1, matrix[i-1][j-1]+matrix[i][j]);
                 //we now have the full matrix for both groups of a hundred arrays, we can make out the best path and do the recursion
                 //to do the recursion well, we'll send the dict with it on each level, the final level (base case) will be the one actually using it
-                let cost = -1; //the variable used to select the best path
-                let x = 100; //the x and y coordinates to go through the matrix we just made
+                let x = 100; //the x and y coordinates to go through the matrix we just made (x for lvl2array2 and y for lvl2array1)
                 let y = 100; //we need to lower them by 1 to access the lvl 2 arrays are they're 100 blocks long compared to the 101*101 matrix
                 let x_for_align = absolute_x+text_array2.length-lvl2array2[x-1].length; //the absolute x and y coordinates we'll give to the descending align functions
                 let y_for_align = absolute_y+text_array1.length-lvl2array1[y-1].length;
-                align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align,dict); //we first align the bottom right corner
-                while (x!=0 && y!=0) { //while we haven't reached the top left corner
-                    if (x==0) { //automatic up
+                while (x>0 && y>0) { //while we haven't reached the top left corner
+                    if (x==1) { //automatic up
+                        align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align,dict); //we align the block we're on
                         y-=1; //we go up
-                        if (x==0 && y==0) continue;
-                        y_for_align-=lvl2array1[y].length; //we shift the absolute coordinates up
-                        align(lvl2array1[y],new Array(0),x_for_align,y_for_align,dict); //we align the top block
-                        cost = matrix[y][x]; //we update the cost
-                        continue;
+                        if (y!=0) y_for_align-=lvl2array1[y-1].length; //we shift the absolute coordinates up
                     }
-                    if (y==0) { //automatic left
+                    else if (y==1) { //automatic left
+                        align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align,dict); //we align the block we're on
                         x-=1; //we go left
-                        if (x==0 && y==0) continue;
-                        x_for_align-=lvl2array2[x].length; //we shift the absolute coordinates left
-                        align(new Array(0),lvl2array2[x],x_for_align,y_for_align,dict); //we align the left block
-                        cost = matrix[y][x]; //we update the cost
-                        continue;
+                        if (x!=0) x_for_align-=lvl2array2[x-1].length; //we shift the absolute coordinates left
                     }
-                    let left_value = matrix[y][x-1];
-                    let top_value = matrix[y-1][x];
-                    let diagonal_value = matrix[y-1][x-1];   
-                    if (diagonal_value <= top_value) { //diagonal <= top
-                        if (diagonal_value <= left_value) { //diagonal <= top && diagonal <= left
-                            x-=1;
-                            y-=1; //we go in diagonal;
-                        if (x==0 && y==0) continue;
-                            x_for_align-=lvl2array2[x].length; //we shift the absolute coordinates diagonally
-                            y_for_align-=lvl2array1[y].length;
-                            align(lvl2array1[y],lvl2array2[x],x_for_align,y_for_align, dict); //we align the diagonal block
-                            cost = matrix[y][x]; //we update the cost;
-                            continue;
+                    else {
+                        align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align,dict); //we align the block we're on
+                        if (x==1 && y==1) continue;
+                        let left_value = matrix[y][x-1];
+                        let top_value = matrix[y-1][x];
+                        let diagonal_value = matrix[y-1][x-1];   
+                        if (diagonal_value <= top_value) { //diagonal <= top
+                            if (diagonal_value <= left_value) { //diagonal <= top && diagonal <= left
+                                x-=1;
+                                y-=1; //we go in diagonal;
+                                x_for_align-=lvl2array2[x-1].length; //we shift the absolute coordinates diagonally
+                                y_for_align-=lvl2array1[y-1].length;
+                            }
+                            //left < diagonal <= top
+                            else {
+                                x-=1; //we go left
+                                x_for_align-=lvl2array2[x-1].length; //we shift the absolute coordinates left
+                            }
                         }
-                        //left < diagonal <= top
-                        x-=1; //we go left
-                        if (x==0 && y==0) continue;
-                        x_for_align-=lvl2array2[x].length; //we shift the absolute coordinates left
-                        align(lvl2array1[y],lvl2array2[x],x_for_align,y_for_align,dict); //we align the left block
-                        cost = matrix[y][x]; //we update the cost
-                        continue;
+                        //top < diagonal
+                        else if (left_value <= top_value) { //left <= top < diagonal
+                            x-=1; //we go left, same process as before
+                            x_for_align-=lvl2array2[x-1].length;
+                        }
+                        //top < left < diagonal
+                        else {
+                            y-=1; //we go up
+                            y_for_align-=lvl2array1[y-1].length; //we shift the absolute coordinates up
+                        }
                     }
-                    //top < diagonal
-                    if (left_value <= top_value) { //left <= top < diagonal
-                        x-=1; //we go left, same process as before
-                        if (x==0 && y==0) continue;
-                        x_for_align-=lvl2array2[x].length;
-                        align(lvl2array1[y],lvl2array2[x],x_for_align,y_for_align,dict);
-                        cost = matrix[y][x];
-                        continue;
-                    }
-                    //top < left < diagonal
-                    y-=1; //we go up
-                    if (x==0 && y==0) continue;
-                    y_for_align-=lvl2array1[y].length; //we shift the absolute coordinates up
-                    align(lvl2array1[y],lvl2array2[x],x_for_align,y_for_align,dict); //we align the top block
-                    cost = matrix[y][x]; //we update the cost
-                    continue;
                 }
             }
-            */
-            if (1==0) {}
             else { //we don't need to or cannot divide the texts more
                 for (var i=0;i<text_array1.length;i++) { //filling the dict with the basic costs (0 to 1)
                     //on every y coordinate, we need to use the absolute coordinates to shift the min_max values of the dict on this line
-                    dict.min_max[i].min = Math.min(dict.min_max[i].min, absolute_x);
-                    dict.min_max[i].max = Math.max(dict.min_max[i].max, absolute_x+text_array2.length-1);
+                    dict.min_max[absolute_y+i].min = Math.min(dict.min_max[i].min, absolute_x);
+                    dict.min_max[absolute_y+i].max = Math.max(dict.min_max[i].max, absolute_x+text_array2.length-1);
                     for (var j=0;j<text_array2.length;j++) { //only filling the blocks used
                         if (text_array1[i] == text_array2[j]) dict[String(absolute_x+j)+","+String(absolute_y+i)] = 0; //if the words are the same, the cost is 0
                         else dict[String(absolute_x+j)+","+String(absolute_y+i)] = 1; //else the cost is 1 for now
@@ -159,6 +155,7 @@
                     dict[String(x)+","+String(y)] = Math.min(left,top,diagonal);
                 }
             }
+            return dict;
         }
 
         function create_dict (text_array1, text_array2) {
@@ -171,20 +168,30 @@
             }
             align(text_array1, text_array2, 0, 0, cost_dict); //splits the texts into words and aligns them
             //now we have the dict with costs between 0 and 1, we need to propagate before returning it
-            console.log(cost_dict);
-            propagate(cost_dict);
+            cost_dict = propagate(cost_dict);
             //we now have the full propagated cost dictionary with min and max values for each line, allowing us to skip past empty blocks
             return cost_dict;
         }
 
-        function make_out_path(dict,text_array1,text_array2) { //return array of couples (size 2 arrays) of strings
+        function make_out_path(dict,text_array1,text_array2) { //returns array of couples (size 2 arrays) of strings
             let result_array = new Array();
             let x = text_array2.length-1;
             let y = text_array1.length-1;
-            let i = -1; //cursor in result_array
             var previous_direction = 0; //none, 1=up, 2=left, 3=diagonal (binary)
-            while (x>=0 && y>=0) {
-                i++;
+            while (x>=-1 && y>=-1) {
+                if (x==-1) { //on the left-most side of the dict
+                    if (y==-1) break; //on the top left corner
+                    for (var i=y;i>=0;i--) {
+                        result_array.push([text_array1[i],null]);
+                    }
+                    break;
+                }
+                else if (y==-1) { //on the top of the dict
+                    for (var i=x;i>=0;i--) {
+                        result_array.push([null,text_array2[i]]);
+                    }
+                    break;
+                }
                 let current_key = String(x)+","+String(y); //the four used coordinate keys
                 let diagonal_key = String(x-1)+","+String(y-1);
                 let left_key = String(x-1)+","+String(y);
@@ -193,15 +200,13 @@
                 let left_value = null;
                 let top_value = null;
                 if (diagonal_key in dict) {diagonal_value = dict[diagonal_key];}
-                if (left_key in dict) {left_value=dict[left_key];}
-                if (top_key in dict) {top_value=dict[top_key];}
+                if (left_key in dict) {left_value = dict[left_key];}
+                if (top_key in dict) {top_value = dict[top_key];}
                 if (diagonal_value==null) { //on a border
                     if (x==0 && y==0) {
                         previous_direction = 3;
-                            result_array.push([text_array1[y],text_array2[x]]);
-                            x--;
-                            y--;
-                            continue;
+                        result_array.push([text_array1[y],text_array2[x]]);
+                        break;
                     }
                     if (left_value==null) { //we have to go up
                         previous_direction = 1;
@@ -334,48 +339,52 @@
                     }
                 }
             }
-            console.log(result_array);
             return result_array;
         }
 
         function bring_text_back(text_array, text1, text2) { //fuses strings of similar nature and adds punctuation
             //put the punctuation of both texts into arrays
+            let modified_array = new Array();
+            for (var couple of text_array) {
+                modified_array.push([...couple]);
+            }
             let punct_array_1 = text1.split(/[\p{Script=Latin}]+/u);
             let punct_array_2 = text2.split(/[\p{Script=Latin}]+/u);
-            console.log(punct_array_1);
             let pt_1 = 1;
             let pt_2 = 1;
-            //have a for int loop in text_array :
+            //have a for int loop in modified_array :
             let i = 0;
             while (i>=0) {
-                if (i==text_array.length) {
+                if (i==modified_array.length-1) {
                     let last_punct = new Array(2);
                     if (pt_1<punct_array_1.length) last_punct[0] = punct_array_1[pt_1];
                     if (pt_2<punct_array_2.length) last_punct[1] = punct_array_2[pt_2];
-                    if (last_punct[0]!=null || last_punct[1]!=null) text_array.push(last_punct);
+                    if (last_punct[0]!=null || last_punct[1]!=null) modified_array.push(last_punct);
                     break; 
                 }
-                let current_type = (text_array[i][0]==null) ? "added" : (text_array[i][1]==null) ? "removed" : "normal";
-                let next_type = (text_array[i+1][0]==null) ? "added" : (text_array[i+1][1]==null) ? "removed" : "normal";
+                let current_type = (modified_array[i][0]==null) ? "added" : (modified_array[i][1]==null) ? "removed" : "normal";
+                let next_type = (modified_array[i+1][0]==null) ? "added" : (modified_array[i+1][1]==null) ? "removed" : "normal";
                 if (current_type == "normal" || current_type == "added") {
-                    text_array[i][1].concat(punct_array_2[pt_2]);
-                    pt_2++;
                     if (current_type == next_type) {
-                        text_array[i+1][0] = text_array[i][0].concat(text_array[i+1][0]);
-                        text_array[i][0] = null;
+                        modified_array[i+1][1] = modified_array[i][1].concat(punct_array_2[pt_2],modified_array[i+1][1]);
+                        modified_array[i][1] = null;
                     }
+                    else {
+                        modified_array[i][1] = modified_array[i][1].concat(punct_array_2[pt_2]);
+                    }
+                    pt_2++;
                 }
                 if (current_type == "normal" || current_type == "removed") {
-                    text_array[i][0].concat(punct_array_1[pt_1]);
+                    modified_array[i][0] = modified_array[i][0].concat(punct_array_1[pt_1]);
                     pt_1++;
                     if (current_type == next_type) {
-                        text_array[i+1][1] = text_array[i][1].concat(text_array[i+1][1]);
-                        text_array[i][1] = null;
+                        modified_array[i+1][0] = modified_array[i][0].concat(modified_array[i+1][0]);
+                        modified_array[i][0] = null;
                     }
                 }
                 i++;
             }
-            return text_array;
+            return modified_array;
         }
 
         function scroll_to_id(block_id, direction) { //scrolls to a certain block id on both sides
@@ -383,10 +392,10 @@
             let right_block = document.getElementById("r_"+block_id);
             if (left_block!=null && right_block!=null) {
                 if (direction=="l") { //clicked on a block on the left
-                    right_panel.scrollTop = right_block.offsetTop //+ left_block.offsetTop - left_panel.scrollTop;
+                    document.querySelector("#right_panel").scrollTop = right_block.offsetTop //+ left_block.offsetTop - left_panel.scrollTop;
                 }
                 else { //clicked on a block on the right
-                    left_panel.scrollTop = left_block.offsetTop //+ right_block.offsetTop - right_panel.scrollTop;
+                    document.querySelector("#left_panel").scrollTop = left_block.offsetTop //+ right_block.offsetTop - right_panel.scrollTop;
                 }                
             }
         }
@@ -432,15 +441,15 @@
             });
             document.querySelector("#align_button").style.display = "none";
             let loader = document.querySelector("#loader")
-            loader.style.display = "block";
+            //loader.style.display = "block";
             var op = 0.1;  // initial opacity
             var timer = setInterval(function () {
                 if (op >= 1){
-                clearInterval(timer);
-            }
-            loader.style.opacity = op;
-            loader.style.filter = 'alpha(opacity=' + op * 100 + ")";
-            op += op * 0.04;
+                    clearInterval(timer);
+                }
+                loader.style.opacity = op;
+                loader.style.filter = 'alpha(opacity=' + op * 100 + ")";
+                op += op * 0.04;
             }, 10);
         }
 
@@ -457,7 +466,7 @@
             }, 10);
             loader.style.display = "none";
             document.querySelectorAll(".panel").forEach(element => {
-                element.style.display = "block";
+                element.style.display = "flex";
             });
             document.querySelector("#reset_button").style.display = "block";
             document.querySelector("#export_button").style.display = "block";
@@ -467,52 +476,43 @@
             //after the DOM has been loaded
             //we hide the result panels
             document.querySelectorAll(".panel").forEach(element => {element.style.display = "none";});
+            //we add the click listener for the align button
             document.querySelector("#align_button").addEventListener("click",function(){ //on click
-                let start = Date.now();
-                var left_text = document.querySelector("#left_textarea").value; //scans the left textarea
-                console.log(left_text);
-                var right_text = document.querySelector("#right_textarea").value; //scans the right textarea
                 //remove visibility of button and interaction with textareas
                 change_to_loading_screen();
-                console.log("loading screen");
-                var ta1 = string_to_words(left_text);
-                ta1.pop();
-                console.log("length of left text : "+ta1.length+" words");
-                console.log(ta1);
-                var ta2 = string_to_words(right_text);
-                ta2.pop();
-                console.log("length of right text : "+ta2.length+" words");
-                let dict_time = Date.now();
-                var levenshtein_dict = create_dict(ta1, ta2);
-                console.log("time taken to make the dict : " + (Date.now() - dict_time) + " ms, total time : " + (Date.now() - start) + " ms");
-                console.log(levenshtein_dict);
-                //now that we have the dict, we can use make_out_path
-                let path_time = Date.now();
-                console.log(ta1);
-                var path_ta = make_out_path(levenshtein_dict, ta1, ta2);
-                delete levenshtein_dict;
-                delete ta1;
-                delete ta2;
-                console.log("time taken to make the path : " + (Date.now() - path_time) + " ms, total time : " + (Date.now() - start) + " ms");
-                console.log(path_ta);
-                path_ta.reverse();
-                //then bring_text_back to fuse the groups and add punctuation
-
-                // !!!! broken for now
-
-                //path_ta = bring_text_back(path_ta, left_text, right_text);
-                delete left_text;
-                delete right_text;
-                console.log("text fused");
-                console.log(path_ta);
-                //then make divs to create the divs inside of the panels
-                make_divs(path_ta);
-                delete path_ta;
-                console.log("divs made");
-                //then we have to change page setup
-                change_to_result_screen();
-                console.log("result shown, total time : " + (Date.now() - start) + " ms");
-                //tadaaaaaa
+                setTimeout(function(){
+                    let start = Date.now();
+                    var left_text = document.querySelector("#left_textarea").value; //scans the left textarea
+                    var right_text = document.querySelector("#right_textarea").value; //scans the right textarea
+                    var ta1 = string_to_words(left_text);
+                    ta1.pop();
+                    console.log("length of left text : "+ta1.length+" words");
+                    var ta2 = string_to_words(right_text);
+                    ta2.pop();
+                    console.log("length of right text : "+ta2.length+" words");
+                    let dict_time = Date.now();
+                    var levenshtein_dict = create_dict(ta1, ta2);
+                    console.log("time taken to make the dict : " + (Date.now() - dict_time) + " ms, total time : " + (Date.now() - start) + " ms");
+                    //now that we have the dict, we can use make_out_path
+                    let path_time = Date.now();
+                    var path_ta = make_out_path(levenshtein_dict, ta1, ta2);
+                    delete levenshtein_dict;
+                    delete ta1;
+                    delete ta2;
+                    console.log("time taken to make the path : " + (Date.now() - path_time) + " ms, total time : " + (Date.now() - start) + " ms");
+                    path_ta.reverse();
+                    //then bring_text_back to fuse the groups and add punctuation
+                    path_ta = bring_text_back(path_ta, left_text, right_text);
+                    delete left_text;
+                    delete right_text;
+                    //then make divs to create the divs inside of the panels
+                    make_divs(path_ta);
+                    delete path_ta;
+                    //then we have to change page setup
+                    change_to_result_screen();
+                    console.log("result shown, total time : " + (Date.now() - start) + " ms");
+                    //tadaaaaaa
+                }, 10);
             });
         });
     </script>
@@ -521,7 +521,7 @@
     <header>
         <div id="logo_div">
             <a href="./index.html" id="logo_anchor">
-                <img width="286" height="120" src="https://siteigm.univ-mlv.fr/wp-content/uploads/2021/10/LIGM-CMJN-couleurs-300dpi-1.png" alt="Laboratoire d'Informatique Gaspard-Monge UMR 8049" decoding="async">
+                <img width="286" height="120" src="https://siteigm.univ-mlv.frr/wp-content/uploads/2021/10/LIGM-CMJN-couleurs-300dpi-1.png" alt="Laboratoire d'Informatique Gaspard-Monge UMR 8049" decoding="async">
             </a>
         </div>
         <div id="titlediv">
