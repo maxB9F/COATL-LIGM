@@ -45,44 +45,124 @@
             return result_dict
         }*/
 
-        function align(text_array1, text_array2, absolute_x, absolute_y,dict) { //recursive, aligns two text arrays
-            if (text_array1.length>9999 && text_array2.length>9999) { //we need to divide even more before comparing words
-                let lvl2array1 = new Array(100);
-                let lvl2array2 = new Array(100); //the arrays which will host the newly divided arrays
+        function levenshtein_score(a, b, word1, word2) {
+            // returns a value between b and a for the similarity between two words (or strings)
+            let word1_array = word1.split('');
+            let word2_array = word2.split('');
+            let matrix = new Array(word1_array.length+1);
+            for (var i=0;i<word1_array.length+1;i++) {
+                matrix[i] = new Array(word2_array.length+1);
+                for (var j=0;j<word2_array.length+1;j++) matrix[i][j] = (i==0) ? j : (j==0) ? i : (word1_array[i]==word2_array[j]) ? 0 : 1;
+            }
+            for (var i=1;i<word1_array.length+1;i++) {
+                for (var j=1;j<word2_array.length+1;j++) {
+                    matrix[i][j] = Math.max(matrix[i][j-1]+1, matrix[i-1][j]+1, matrix[i][j]+matrix[i-1][j-1]);
+                }
+            }
+            let result = 0;
+            let x = word2_array.length;
+            let y = word1_array.length;
+            while (x!=0 || y!=0) {
+                if (x==0) {
+                    result++;
+                    y--;
+                    continue;
+                }
+                if (y==0) {
+                    result++;
+                    x--;
+                    continue;
+                }
+                let diag = matrix[y-1][x-1];
+                let left = matrix[y][x-1];
+                let top = matrix[y-1][x];
+                if (top < diag) {
+                    result++;
+                    if (left < top) x--;
+                    else y--;
+                }
+                // diag <= top
+                else if (left < diag) {
+                    result++;
+                    if (left < top) x--;
+                    else y--;
+                }
+                // diag <= top && diag <= left
+                else if ((diag < top && diag < left) || (word1_array[y] == word2_array[x])) {
+                    x--;
+                    y--;
+                }
+                //diag == top || diag == left
+                else if (top == diag) {result++; y--;}
+                else {result++; x--;}
+            }
+            // the shortest path is always the longest word's length
+            // the longest path is always the shortest path + the shortest word's length + 1
+            // if we want a levensthein difference index between 0 and 1, we need to convert it to that scale
+            console.log("path length for "+word1+" & "+word2+" : "+result);
+            let scaled = (result - Math.max(word1_array.length, word2_array.length)) / (Math.min(word1_array.length, word2_array.length) + 1);
+            console.log("scaled path length for "+word1+" & "+word2+" : "+scaled);
+            // we now have a number between 0 and 1, we'll convert it to a score between b and a
+            return (a - b)*(scaled) + b;
+        }
+
+        function score(word1, word2, options) {
+            if (word1 == word2) return 0;
+            if (word1.toLowerCase() == word2.toLowerCase()) return 0.1;
+            //if (options != "restrict") {
+                /*let word1_norm = word1.toString().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+                let word2_norm = word2.toString().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+                if (word1_norm == word1_norm) return 0.2;
+                if (word1_norm.toLowerCase() == word2_norm.toLowerCase()) return 0.3;*/
+                //let levscore = levenshtein_score(5.5, 0.5, word1.toLowerCase(), word2.toLowerCase());
+              //  return Math.min(levscore, 1);
+            //}
+            return 1;
+        }
+
+        function align(text_array1, text_array2, absolute_x, absolute_y,dict,min_div_size,div_amount) { //recursive, aligns two text arrays
+            if (text_array1.length>min_div_size && text_array2.length>min_div_size) { //we need to divide even more before comparing words
+                let lvl2array1 = new Array(div_amount);
+                let lvl2array2 = new Array(div_amount); //the arrays which will host the newly divided arrays
                 for (var j=0;j<100;j++) { //the process of homogeneously dividing the arrays
-                    let block_size_1 = text_array1.length/100; //the average size of a block
-                    let block_size_2 = text_array2.length/100;
+                    let block_size_1 = text_array1.length/div_amount; //the average size of a block
+                    let block_size_2 = text_array2.length/div_amount;
                     lvl2array1[j] = text_array1.slice(Math.floor(j*block_size_1),Math.floor((j+1)*block_size_1));
                     lvl2array2[j] = text_array2.slice(Math.floor(j*block_size_2),Math.floor((j+1)*block_size_2));
                 }
                 //we have two arrays of the text arrays divided into 100 each, we can use them to calculate levenshtein distance as well as the best path
-                let matrix = new Array(101); //the matrix for the Levenshtein distance
+                let matrix = new Array(div_amount+1); //the matrix for the Levenshtein distance
                 for (var i=0;i<101;i++) { //filling the matrix with the basic costs (replaced by the Jaccard distance between the sets)
-                    matrix[i] = new Array(101);
-                    for (var j=0;j<101;j++) matrix[i][j] = (j==0) ? i : (i==0) ? j : (matrix[j]) ? matrix[j][i] : jaccard_distance(lvl2array1[i-1],lvl2array2[j-1]);
-                    console.log("cost : "+matrix[i][j]);
+                    matrix[i] = new Array(div_amount+1);
+                    for (var j=0;j<div_amount+1;j++) {
+                        matrix[i][j] = (j==0) ? i : (i==0) ? j : /*(matrix[j]) ? matrix[j][i] :*/ jaccard_distance(lvl2array1[i-1],lvl2array2[j-1]);
+                        //console.log("cost before propagation in x:"+j+", y:"+i+" : "+matrix[i][j]);
+                    }
                 }
                 //we then have the second step (cost propagation)
-                for (var i=1;i<101;i++) for (var j=1;j<101;j++) matrix[i][j] = Math.min(matrix[i-1][j]+1, matrix[i][j-1]+1, matrix[i-1][j-1]+matrix[i][j]);
+                for (var i=1;i<div_amount+1;i++) for (var j=1;j<div_amount+1;j++) {
+                    matrix[i][j] = Math.min(matrix[i-1][j]+1, matrix[i][j-1]+1, matrix[i-1][j-1]+matrix[i][j]);
+                    //console.log("cost after propagation in x:"+j+", y:"+i+" : "+matrix[i][j]);
+                }
                 //we now have the full matrix for both groups of a hundred arrays, we can make out the best path and do the recursion
                 //to do the recursion well, we'll send the dict with it on each level, the final level (base case) will be the one actually using it
-                let x = 100; //the x and y coordinates to go through the matrix we just made (x for lvl2array2 and y for lvl2array1)
-                let y = 100; //we need to lower them by 1 to access the lvl 2 arrays are they're 100 blocks long compared to the 101*101 matrix
+                let x = div_amount; //the x and y coordinates to go through the matrix we just made (x for lvl2array2 and y for lvl2array1)
+                let y = div_amount; //we need to lower them by 1 to access the lvl 2 arrays are they're 100 blocks long compared to the 101*101 matrix
                 let x_for_align = absolute_x+text_array2.length-lvl2array2[x-1].length; //the absolute x and y coordinates we'll give to the descending align functions
                 let y_for_align = absolute_y+text_array1.length-lvl2array1[y-1].length;
                 while (x>0 && y>0) { //while we haven't reached the top left corner
                     if (x==1) { //automatic up
-                        align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align,dict); //we align the block we're on
+                        align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align,dict,min_div_size,div_amount); //we align the block we're on
                         y-=1; //we go up
                         if (y!=0) y_for_align-=lvl2array1[y-1].length; //we shift the absolute coordinates up
                     }
                     else if (y==1) { //automatic left
-                        align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align,dict); //we align the block we're on
+                        align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align,dict,min_div_size,div_amount); //we align the block we're on
                         x-=1; //we go left
                         if (x!=0) x_for_align-=lvl2array2[x-1].length; //we shift the absolute coordinates left
                     }
                     else {
-                        align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align,dict); //we align the block we're on
+                        align(lvl2array1[y-1],lvl2array2[x-1],x_for_align,y_for_align,dict,min_div_size,div_amount); //we align the block we're on
                         if (x==1 && y==1) continue;
                         let left_value = matrix[y][x-1];
                         let top_value = matrix[y-1][x];
@@ -91,8 +171,15 @@
                             if (diagonal_value <= left_value) { //diagonal <= top && diagonal <= left
                                 x-=1;
                                 y-=1; //we go in diagonal;
-                                x_for_align-=lvl2array2[x-1].length; //we shift the absolute coordinates diagonally
-                                y_for_align-=lvl2array1[y-1].length;
+
+                                //we will avoid bottlenecks using the following lines
+
+                                let next_x_for_align = x_for_align - lvl2array2[x-1].length; //we shift the absolute coordinates diagonally
+                                let next_y_for_align = y_for_align - lvl2array1[y-1].length;
+                                align(lvl2array1[y],lvl2array2[x-1],next_x_for_align,y_for_align,dict,min_div_size,div_amount); //we align the left block
+                                align(lvl2array1[y-1],lvl2array2[x],x_for_align,next_y_for_align,dict,min_div_size,div_amount); //we align the top block
+                                x_for_align = next_x_for_align;
+                                y_for_align = next_y_for_align;
                             }
                             //left < diagonal <= top
                             else {
@@ -119,8 +206,7 @@
                     dict.min_max[absolute_y+i].min = Math.min(dict.min_max[i].min, absolute_x);
                     dict.min_max[absolute_y+i].max = Math.max(dict.min_max[i].max, absolute_x+text_array2.length-1);
                     for (var j=0;j<text_array2.length;j++) { //only filling the blocks used
-                        if (text_array1[i] == text_array2[j]) dict[String(absolute_x+j)+","+String(absolute_y+i)] = 0; //if the words are the same, the cost is 0
-                        else dict[String(absolute_x+j)+","+String(absolute_y+i)] = 1; //else the cost is 1 for now
+                        dict[String(absolute_x+j)+","+String(absolute_y+i)] = score(text_array1[i],text_array2[j],"restrict"); //if the words are the same, the cost is 0
                     }
                 }
                 //we now have a completed matrix for calculation of Levenshtein distance on a word basis
@@ -158,7 +244,8 @@
             return dict;
         }
 
-        function create_dict (text_array1, text_array2) {
+        function create_dict (text_array1, text_array2, start_time) {
+            if (start_time!=null) var dict_time = Date.now();
             var cost_dict = {};
             cost_dict.min_max = new Array(text_array1.length);
             for (var i=0;i<cost_dict.min_max.length;i++) { //pre-filling the min_max array for an easier later filling
@@ -166,29 +253,41 @@
                 cost_dict.min_max[i].min = Infinity;
                 cost_dict.min_max[i].max = -Infinity;
             }
-            align(text_array1, text_array2, 0, 0, cost_dict); //splits the texts into words and aligns them
+            align(text_array1, text_array2, 0, 0, cost_dict,5000,100); //splits the texts into words and aligns them
+            if (start_time!=null) {
+                console.log("time taken to make the dict : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
+                dict_time = Date.now();
+            }
             //now we have the dict with costs between 0 and 1, we need to propagate before returning it
             cost_dict = propagate(cost_dict);
+            if (start_time!=null) {
+                console.log("time taken to propagate : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
+                delete dict_time;
+            }
             //we now have the full propagated cost dictionary with min and max values for each line, allowing us to skip past empty blocks
             return cost_dict;
         }
 
         function make_out_path(dict,text_array1,text_array2) { //returns array of couples (size 2 arrays) of strings
             let result_array = new Array();
+            // in the result Array, 0 is unchanged, any number between 0 and 1 is changed with variations, 2 is removed, 3 is added
             let x = text_array2.length-1;
             let y = text_array1.length-1;
             var previous_direction = 0; //none, 1=up, 2=left, 3=diagonal (binary)
             while (x>=-1 && y>=-1) {
+                //console.log("x,y : "+x+","+y);
                 if (x==-1) { //on the left-most side of the dict
                     if (y==-1) break; //on the top left corner
                     for (var i=y;i>=0;i--) {
-                        result_array.push([text_array1[i],null]);
+                        result_array.push([2, text_array1[i],""]);
+                        //console.log("up (on the left side)");
                     }
                     break;
                 }
                 else if (y==-1) { //on the top of the dict
                     for (var i=x;i>=0;i--) {
-                        result_array.push([null,text_array2[i]]);
+                        result_array.push([3, "",text_array2[i]]);
+                        //console.log("left (on the top side)");
                     }
                     break;
                 }
@@ -202,236 +301,252 @@
                 if (diagonal_key in dict) {diagonal_value = dict[diagonal_key];}
                 if (left_key in dict) {left_value = dict[left_key];}
                 if (top_key in dict) {top_value = dict[top_key];}
-                if (diagonal_value==null) { //on a border
+                if (left_value==null || top_value==null) { //on a border
                     if (x==0 && y==0) {
-                        previous_direction = 3;
-                        result_array.push([text_array1[y],text_array2[x]]);
+                        let label = score(text_array1[y],text_array2[x]);
+                        result_array.push([label, text_array1[y],text_array2[x]]);
+                        //console.log("diag (in 0,0)");
                         break;
                     }
                     if (left_value==null) { //we have to go up
                         previous_direction = 1;
-                        result_array.push([text_array1[y],null]);
+                        result_array.push([2, text_array1[y],""]);
+                        //console.log("up (no left square)");
                         y--;
                     }
                     else { //we have to go left
                         previous_direction = 2;
-                        result_array.push([null,text_array2[x]]);
+                        result_array.push([3, "",text_array2[x]]);
+                        //console.log("left (no top square)");
                         x--;
                     }
                 }
-                else { //not on a border, we have to compare the three paths
-                    if (diagonal_value < left_value) {
-                        if (diagonal_value < top_value) {
-                            //we go diagonal
-                            previous_direction = 3;
-                            result_array.push([text_array1[y],text_array2[x]]);
-                            x--;
-                            y--;
-                            continue;
-                        }
-                        if (top_value < diagonal_value) {
-                            //we go up
-                            previous_direction = 1;
-                            result_array.push([text_array1[y],null]);
-                            y--;
-                            continue;
-                        }
-                        if (previous_direction==1) {
-                            //we go up
-                            previous_direction = 1;
-                            result_array.push([text_array1[y],null]);
-                            y--;
-                            continue;
-                        }
-                        //we go diagonal
-                        previous_direction = 3;
-                        result_array.push([text_array1[y],text_array2[x]]);
+                // now we know we're not on a border
+                
+                let label = score(text_array1[y],text_array2[x],"restrict");
+
+                if (label<1) { //same word or slight change, we go diagonally
+                    result_array.push([label, text_array1[y],text_array2[x]]);
+                    //console.log("diag (strict score < 1)");
+                    x--;
+                    y--;
+                }
+                else if (diagonal_value <= left_value && diagonal_value <= top_value) {
+                    let label = score(text_array1[y],text_array2[x],null);
+                    if (label<1) {
+                        result_array.push([label, text_array1[y],text_array2[x]]);
+                        //console.log("diag (diag <= top & diag <= left & non-strict score < 1)");
                         x--;
                         y--;
-                        continue;
                     }
-                    //we know left_value <= diagonal_value
-                    if (left_value < top_value) {
-                        if (left_value < diagonal_value) {
-                            //we go left
-                            previous_direction = 2;
-                            result_array.push([null, text_array2[x]]);
-                            x--;
-                            continue;
-                        }
-                        if (previous_direction == 2) {
-                            //we go left
-                            previous_direction = 2;
-                            result_array.push([null, text_array2[x]]);
-                            x--;
-                            continue;
-                        }
-                        //we go diagonal
-                        previous_direction = 3;
-                        result_array.push([text_array1[y],text_array2[x]]);
-                        x--;
-                        y--;
-                        continue;
-                    }
-                    //we know top_value <= left_value <= diagonal_value
-                    if (top_value < diagonal_value) {
-                        if (top_value < left_value) {
-                            //we go up
-                            previous_direction = 1;
-                            result_array.push([text_array1[y],null]);
-                            y--;
-                            continue;
-                        }
-                        if (previous_direction == 1) {
-                            //we go up
-                            previous_direction = 1;
-                            result_array.push([text_array1[y],null]);
-                            y--;
-                            continue;
-                        }
-                        //we go left
+                    else if (left_value < top_value) {
                         previous_direction = 2;
-                        result_array.push([null, text_array2[x]]);
+                        result_array.push([3, "",text_array2[x]]);
+                        //console.log("left (non-strict score >=1 and left < top)");
                         x--;
-                        continue;
                     }
-                    //we know all three values are equal
-                    switch(previous_direction) {
-                        case 1: //we went up before
-                            //we go up
-                            previous_direction = 1;
-                            result_array.push([text_array1[y],null]);
-                            y--;
-                            break;
-                        case 2: //we went left before
-                            //we go left
-                            previous_direction = 2;
-                            result_array.push([null, text_array2[x]]);
-                            x--;
-                            break;
-                        case 3: //we went diagonally before
-                            //we go diagonally
-                            previous_direction = 3;
-                            result_array.push([text_array1[y],text_array2[x]]);
-                            x--;
-                            y--;
-                            break;
-                        default: //first time
-                            if (text_array2[x]==text_array1[y]) {
-                                //we go diagonally
-                                previous_direction = 3;
-                                result_array.push([text_array1[y],text_array2[x]]);
-                                x--;
-                                y--;
-                            }
-                            else if (x>=y) {
-                                //we go left
-                                previous_direction = 2;
-                                result_array.push([null, text_array2[x]]);
-                                x--;
-                            }
-                            else {
-                                //we go up
-                                previous_direction = 1;
-                                result_array.push([text_array1[y],null]);
-                                y--;
-                            }
+                    else {
+                        previous_direction = 1;
+                        result_array.push([2, text_array1[y],""]);
+                        //console.log("up (non-strict score >=1 and top <= left)");
+                        y--;
                     }
                 }
+                else if (left_value < top_value) {
+                    previous_direction = 2;
+                    result_array.push([3, "",text_array2[x]]);
+                    //console.log("left (score >=1 and left < top)");
+                    x--;
+                }
+                else {
+                    previous_direction = 1;
+                    result_array.push([2, text_array1[y],""]);
+                    //console.log("up (score >=1 and top <= left)");
+                    y--;
+                }
+                /*
+                else if (left_value < top_value) {
+                    if (left_value < diagonal_value) {
+                        previous_direction = 2;
+                        result_array.push([3, "",text_array2[x]]);
+                        //console.log("left (least costly)");
+                        x--;
+                    }
+                    else if (left_value == diagonal_value) {
+                        let label = score(text_array1[y],text_array2[x]);
+                        if (label>1) {
+                            previous_direction = 2;
+                            result_array.push([3, "",text_array2[x]]);
+                            //console.log("left (left = diag < top & score > 1)");
+                            x--;
+                        }
+                        else {
+                            result_array.push([label, text_array1[y],text_array2[x]]);
+                            //console.log("diag (diag = left < top & score <= 1)");
+                            x--;
+                            y--;
+                        }
+                    }
+                    else {
+                        let label = score(text_array1[y],text_array2[x]);
+                        result_array.push([label, text_array1[y],text_array2[x]]);
+                        //console.log("diag (least costly))");
+                        x--;
+                        y--;
+                    }
+                }
+                // top <= left
+                else if (top_value < left_value) {
+                    if (top_value < diagonal_value) {
+                        previous_direction = 1;
+                        result_array.push([2, text_array1[y],""]);
+                        //console.log("up (least costly)");
+                        y--;
+                    }
+                    else if (top_value == diagonal_value) {
+                        let label = score(text_array1[y],text_array2[x]);
+                        if (label>1) {
+                            previous_direction = 1;
+                            result_array.push([2, text_array1[y],""]);
+                            //console.log("up (top = diag < left & score > 1)");
+                            y--;
+                        }
+                        else {
+                            result_array.push([label, text_array1[y],text_array2[x]]);
+                            //console.log("diag (diag = top < left & score <= 1)");
+                            x--;
+                            y--;
+                        }
+                    }
+                    else {
+                        let label = score(text_array1[y],text_array2[x]);
+                        result_array.push([label, text_array1[y],text_array2[x]]);
+                        //console.log("diag (least costly))");
+                        x--;
+                        y--;
+                    }
+                }
+                // top = left
+                else if (diagonal_value < top_value) {
+                    let label = score(text_array1[y],text_array2[x]);
+                    result_array.push([label, text_array1[y],text_array2[x]]);
+                    //console.log("diag (least costly))");
+                    x--;
+                    y--;
+                }
+                // top = left = diagonal
+                else {
+                    let label = score(text_array1[y],text_array2[x]);
+                    if (label<=1) {
+                        result_array.push([label, text_array1[y],text_array2[x]]);
+                        //console.log("diag (same cost & score <= 1))");
+                        x--;
+                        y--;
+                    }
+                    else if (previous_direction==1) {
+                        result_array.push([2, text_array1[y],""]);
+                        //console.log("up (same cost, score > 1 and went up before)");
+                        y--;
+                    }
+                    else if (previous_direction==2) {
+                        result_array.push([3, "",text_array2[x]]);
+                        //console.log("left (same cost, score > 1 and went left before)");
+                        x--;
+                    }
+                    else if (x<y) {
+                        previous_direction = 2;
+                        result_array.push([3, "",text_array2[x]]);
+                        //console.log("left (first square, no choice and x<y)");
+                        x--;
+                    }
+                    else {
+                        previous_direction = 3;
+                        result_array.push([3, "",text_array2[x]]);
+                        //console.log("left (first square, no choice and x>=y)");
+                        x--;
+                    }
+                }
+                */
             }
             return result_array;
         }
 
         function bring_text_back(text_array, text1, text2) { //fuses strings of similar nature and adds punctuation
-            //put the punctuation of both texts into arrays
-            let modified_array = new Array();
-            for (var couple of text_array) {
-                modified_array.push([...couple]);
-            }
-            let punct_array_1 = text1.split(/[\p{Script=Latin}]+/u);
-            let punct_array_2 = text2.split(/[\p{Script=Latin}]+/u);
-            let pt_1 = 1;
+            let result_array = [];
+            let previous_label = -1; //the variable used to know wether to create a new block or not
+            let i = -1; //the index of the last block of result_array
+            let punct_array_1 = text1.split(/[\p{Script=Latin}]+/u); //the first text's punctuation
+            let punct_array_2 = text2.split(/[\p{Script=Latin}]+/u); //same for text 2
+            let pt_1 = 1; //the first element of the arrays is always '' (empty string)
             let pt_2 = 1;
-            //have a for int loop in modified_array :
-            let i = 0;
-            while (i>=0) {
-                if (i==modified_array.length-1) {
-                    let last_punct = new Array(2);
-                    if (pt_1<punct_array_1.length) last_punct[0] = punct_array_1[pt_1];
-                    if (pt_2<punct_array_2.length) last_punct[1] = punct_array_2[pt_2];
-                    if (last_punct[0]!=null || last_punct[1]!=null) modified_array.push(last_punct);
-                    break; 
+            for (var block of text_array) {
+                if (block[0]!=previous_label) { //the current couple of words doesn't have the same label as the last, we create a new grouping
+                    i++;
+                    result_array.push([block[0],"",""]);
                 }
-                let current_type = (modified_array[i][0]==null) ? "added" : (modified_array[i][1]==null) ? "removed" : "normal";
-                let next_type = (modified_array[i+1][0]==null) ? "added" : (modified_array[i+1][1]==null) ? "removed" : "normal";
-                if (current_type == "normal" || current_type == "added") {
-                    if (current_type == next_type) {
-                        modified_array[i+1][1] = modified_array[i][1].concat(punct_array_2[pt_2],modified_array[i+1][1]);
-                        modified_array[i][1] = null;
-                    }
-                    else {
-                        modified_array[i][1] = modified_array[i][1].concat(punct_array_2[pt_2]);
-                    }
+                previous_label=block[0];
+                if (block[0]!=3) { //there's a left word
+                    result_array[i][1] = result_array[i][1].concat(block[1],punct_array_1[pt_1]);
+                    pt_1++;
+                }
+                if (block[0]!=2) { //there's a right word
+                    result_array[i][2] = result_array[i][2].concat(block[2],punct_array_2[pt_2]);
                     pt_2++;
                 }
-                if (current_type == "normal" || current_type == "removed") {
-                    modified_array[i][0] = modified_array[i][0].concat(punct_array_1[pt_1]);
-                    pt_1++;
-                    if (current_type == next_type) {
-                        modified_array[i+1][0] = modified_array[i][0].concat(modified_array[i+1][0]);
-                        modified_array[i][0] = null;
-                    }
-                }
-                i++;
             }
-            return modified_array;
+            let last_punct = [4,null,null]; //if there's any punctuation left, we create a block for it with a unique label
+            if (pt_1<punct_array_1.length) last_punct[0] = punct_array_1[pt_1];
+            if (pt_2<punct_array_2.length) last_punct[1] = punct_array_2[pt_2];
+            if (last_punct[0]!=null || last_punct[1]!=null) result_array.push(last_punct);
+            return result_array;
         }
 
         function scroll_to_id(block_id, direction) { //scrolls to a certain block id on both sides
             let left_block = document.getElementById("l_"+block_id);
             let right_block = document.getElementById("r_"+block_id);
+            let left_panel = document.getElementById("left_panel");
+            let right_panel = document.getElementById("right_panel");
             if (left_block!=null && right_block!=null) {
-                if (direction=="l") { //clicked on a block on the left
-                    document.querySelector("#right_panel").scrollTop = right_block.offsetTop //+ left_block.offsetTop - left_panel.scrollTop;
-                }
-                else { //clicked on a block on the right
-                    document.querySelector("#left_panel").scrollTop = left_block.offsetTop //+ right_block.offsetTop - right_panel.scrollTop;
-                }                
+                var right_block_pos = right_block.offsetTop - (right_panel.getBoundingClientRect().height - right_block.getBoundingClientRect().height)/2;
+                right_panel.scrollTo({top: right_block_pos, behavior: 'smooth'});
+                var left_block_pos = left_block.offsetTop - (left_panel.getBoundingClientRect().height - left_block.getBoundingClientRect().height)/2;
+                left_panel.scrollTo({top: left_block_pos, behavior: 'smooth'});
             }
         }
 
-        function create_div(text_part, type, id, side, direction) {
-            //type, id and side need to already be formated, ex : create_div("example text.", "removed", "l_234", "left_panel")
-            let new_div = document.createElement("div");
-            new_div.classList.add("text_part");
-            if (type!=null) new_div.classList.add(type);
-            new_div.id = direction + "_" + String(id);
-            new_div.textContent = text_part;
-            document.getElementById(side).appendChild(new_div);
-            //add sync scrolling thingy
-
-            // !!!!! broken for now
-
-            //new_div.addEventListener("click", scroll_to_id(id,direction));
+        function int_to_type(typeint) {
+            if (typeint==0) return "unchanged";
+            if (typeint==2) return "removed";
+            if (typeint==3) return "added";
+            if (typeint==4) return "punct";
+            if (typeint==0.1) return "changed typecase";
+            if (typeint==0.2) return "changed diacritics";
+            if (typeint==0.3) return "changed typecase diacritics";
+            return "changed";
         }
 
-        function make_divs(text_array) {
-            let div_id = 0;
-            for (var couple of text_array) {
-                if (couple[0] == null && couple[1] == null) continue;
-                if (couple[1] == null) {
-                    create_div(couple[0],"removed",div_id,"left_panel","l");
-                    div_id++;
-                    continue;
+        function make_spans(text_array) {
+            let span_id = 0;
+            for (var block of text_array) {
+                let classes = int_to_type(block[0]).split(" "); //all the classes added
+                if (block[0]!=3) { //create a span on the left
+                    let new_span_left = document.createElement("span");
+                    new_span_left.classList.add("text_part",classes);
+                    new_span_left.id = "l_"+String(span_id); //the span id used for synchronised scrolling
+                    new_span_left.textContent = block[1];
+                    document.getElementById("left_panel").appendChild(new_span_left);
                 }
-                if (couple[0] == null) {
-                    create_div(couple[1],"added",div_id,"right_panel","r");
-                    div_id++;
-                    continue;
+                if (block[0]!=2) { //create a span on the right
+                    let new_span_right = document.createElement("span");
+                    new_span_right.classList.add("text_part",classes);
+                    new_span_right.id = "r_"+String(span_id); //the span id used for synchronised scrolling
+                    new_span_right.textContent = block[2];
+                    document.getElementById("right_panel").appendChild(new_span_right);
                 }
-                create_div(couple[0],null,div_id,"left_panel","l");
-                create_div(couple[1],null,div_id,"right_panel","r");
-                div_id++;
+                //add sync scrolling thingy
+                // !!!!! broken for now
+                //new_div.addEventListener("click", scroll_to_id(id,direction));
+                span_id++;
             }
         }
 
@@ -466,7 +581,7 @@
             }, 10);
             loader.style.display = "none";
             document.querySelectorAll(".panel").forEach(element => {
-                element.style.display = "flex";
+                element.style.display = "block";
             });
             document.querySelector("#reset_button").style.display = "block";
             document.querySelector("#export_button").style.display = "block";
@@ -490,29 +605,39 @@
                     var ta2 = string_to_words(right_text);
                     ta2.pop();
                     console.log("length of right text : "+ta2.length+" words");
-                    let dict_time = Date.now();
-                    var levenshtein_dict = create_dict(ta1, ta2);
-                    console.log("time taken to make the dict : " + (Date.now() - dict_time) + " ms, total time : " + (Date.now() - start) + " ms");
+                    var levenshtein_dict = create_dict(ta1, ta2, start);
                     //now that we have the dict, we can use make_out_path
                     let path_time = Date.now();
                     var path_ta = make_out_path(levenshtein_dict, ta1, ta2);
-                    delete levenshtein_dict;
-                    delete ta1;
-                    delete ta2;
                     console.log("time taken to make the path : " + (Date.now() - path_time) + " ms, total time : " + (Date.now() - start) + " ms");
                     path_ta.reverse();
                     //then bring_text_back to fuse the groups and add punctuation
                     path_ta = bring_text_back(path_ta, left_text, right_text);
-                    delete left_text;
-                    delete right_text;
+
+                    // ??? add second post-treatment step to make "changed" blocks out of adjacent "removed" and "added" blocks
+
                     //then make divs to create the divs inside of the panels
-                    make_divs(path_ta);
-                    delete path_ta;
+                    make_spans(path_ta);
                     //then we have to change page setup
                     change_to_result_screen();
                     console.log("result shown, total time : " + (Date.now() - start) + " ms");
                     //tadaaaaaa
                 }, 10);
+            });
+            document.querySelectorAll(".text_part").forEach(element => {
+                var id = element.id.split('_');
+                element.addEventListener("click", function() {
+                    scroll_to_id(id[1],id[0]);
+                });
+                delete id;
+            });
+            document.querySelector("#reset_button").addEventListener("click",function(){
+                delete levenshtein_dict;
+                delete ta1;
+                delete ta2;
+                delete left_text;
+                delete right_text;
+                delete path_ta;
             });
         });
     </script>
