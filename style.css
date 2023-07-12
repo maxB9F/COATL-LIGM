@@ -142,12 +142,12 @@ textarea {
     color: rgb(40,40,40);
 }
 
-.removed {
+.removed, #left_panel > .non_corresponding {
     color: white;
     background-color: red;
 }
 
-.added {
+.added, #right_panel > .non_corresponding {
     color: white;
     background-color: blue;
 }

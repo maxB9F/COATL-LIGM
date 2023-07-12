@@ -12,6 +12,9 @@
         var words = XRegExp("[^(\p{P})|(\p{Z})]+");*/
         var left_panel = document.getElementById("left_panel");
         var right_panel = document.getElementById("right_panel");
+        function dkey(x,y) {
+            return (x+","+y);
+        }
         function string_to_words(text) { //splits the string into words (includes digits, diacritics and mathematical characters)
             return text.split(/[^\p{Script=Latin}]+/u); //the string is split according to the regular expression
         }
@@ -22,11 +25,14 @@
             for(var x of set1) if(set2.has(x)) intersect.add(x);
             let union = new Set(set1);
             for (var y of set2) union.add(y);
-            return 1.0 - (intersect.length)/(union.length);*/
+            var res = 1.0 - (intersect.length)/(union.length);
+            console.log(res);
+            return res;*/
             var m1 = new Minhash();
             var m2 = new Minhash();
             array1.map(function(w) {m1.update(w)});
             array2.map(function(w) {m2.update(w)});
+            console.log(1 - m1.jaccard(m2));
             return 1 - m1.jaccard(m2);
         }
 
@@ -45,6 +51,34 @@
             return result_dict
         }*/
 
+        function shortest_path(matrix,x,y, array_x, array_y) {
+            // recursive, returns the length of the shortest path in a levenshtein matrix
+            if (x==0) return y;
+            if (y==0) return x;
+            let left = matrix[y][x-1];
+            let top = matrix[y-1][x];
+            let diag = matrix[y-1][x];
+            if (left < diag) {
+                if (top < left) return 1 + shortest_path(matrix,x,y-1, array_x, array_y);
+                if (left < top) return 1 + shortest_path(matrix,x-1,y, array_x, array_y);
+                return 1 + Math.min(shortest_path(matrix,x,y-1, array_x, array_y), shortest_path(matrix,x-1,y, array_x, array_y));
+            }
+            // diag <= left
+            if (top < diag) return 1 + shortest_path(matrix,x,y-1, array_x, array_y);
+            // diag <= top && diag <= left
+            if (array_x[x-1]==array_y[y-1]) {
+                return shortest_path(matrix,x-1,y-1, array_x, array_y);
+            }
+            // add 2 to diag
+            if (diag == top) {
+                if (diag == left) return Math.min(1+shortest_path(matrix,x,y-1, array_x, array_y), 1+shortest_path(matrix,x-1,y, array_x, array_y), 2+shortest_path(matrix,x-1,y-1, array_x, array_y));
+                return Math.min(1+shortest_path(matrix,x,y-1, array_x, array_y), 2+shortest_path(matrix,x-1,y-1, array_x, array_y));
+            }
+            if (diag == left) return Math.min(1+shortest_path(matrix,x-1,y, array_x, array_y), 2+shortest_path(matrix,x-1,y-1, array_x, array_y));
+            // diag < top && diag < left
+            return 2+shortest_path(matrix,x-1,y-1, array_x, array_y);
+        }
+
         function levenshtein_score(a, b, word1, word2) {
             // returns a value between b and a for the similarity between two words (or strings)
             let word1_array = word1.split('');
@@ -52,56 +86,23 @@
             let matrix = new Array(word1_array.length+1);
             for (var i=0;i<word1_array.length+1;i++) {
                 matrix[i] = new Array(word2_array.length+1);
-                for (var j=0;j<word2_array.length+1;j++) matrix[i][j] = (i==0) ? j : (j==0) ? i : (word1_array[i]==word2_array[j]) ? 0 : 1;
+                for (var j=0;j<word2_array.length+1;j++) matrix[i][j] = (i==0) ? j : (j==0) ? i : (word1_array[i-1]==word2_array[j-1]) ? 0 : 1;
             }
             for (var i=1;i<word1_array.length+1;i++) {
                 for (var j=1;j<word2_array.length+1;j++) {
                     matrix[i][j] = Math.max(matrix[i][j-1]+1, matrix[i-1][j]+1, matrix[i][j]+matrix[i-1][j-1]);
                 }
             }
-            let result = 0;
-            let x = word2_array.length;
-            let y = word1_array.length;
-            while (x!=0 || y!=0) {
-                if (x==0) {
-                    result++;
-                    y--;
-                    continue;
-                }
-                if (y==0) {
-                    result++;
-                    x--;
-                    continue;
-                }
-                let diag = matrix[y-1][x-1];
-                let left = matrix[y][x-1];
-                let top = matrix[y-1][x];
-                if (top < diag) {
-                    result++;
-                    if (left < top) x--;
-                    else y--;
-                }
-                // diag <= top
-                else if (left < diag) {
-                    result++;
-                    if (left < top) x--;
-                    else y--;
-                }
-                // diag <= top && diag <= left
-                else if ((diag < top && diag < left) || (word1_array[y] == word2_array[x])) {
-                    x--;
-                    y--;
-                }
-                //diag == top || diag == left
-                else if (top == diag) {result++; y--;}
-                else {result++; x--;}
-            }
-            // the shortest path is always the longest word's length
-            // the longest path is always the shortest path + the shortest word's length + 1
-            // if we want a levensthein difference index between 0 and 1, we need to convert it to that scale
-            console.log("path length for "+word1+" & "+word2+" : "+result);
-            let scaled = (result - Math.max(word1_array.length, word2_array.length)) / (Math.min(word1_array.length, word2_array.length) + 1);
-            console.log("scaled path length for "+word1+" & "+word2+" : "+scaled);
+            let result = shortest_path(matrix, word2_array.length, word1_array.length, word2_array, word1_array);
+            // shortest path mathematically possible : |word1.length - word2.length|
+            // longest path mathematically possible : word1.length + word2.length
+            // if we want a levensthein difference index between 0 and 1, we could convert it to that scale
+            //console.log("path length for "+word1+" & "+word2+" : "+result);
+            let len_long = Math.max(word1_array.length, word2_array.length);
+            let len_short = Math.min(word1_array.length, word2_array.length);
+            //right now, we're using this as this yields the best results
+            let scaled = (result > len_short) ? 1 : result/len_short;
+            //console.log("scaled path length for "+word1+" & "+word2+" : "+scaled);
             // we now have a number between 0 and 1, we'll convert it to a score between b and a
             return (a - b)*(scaled) + b;
         }
@@ -109,14 +110,13 @@
         function score(word1, word2, options) {
             if (word1 == word2) return 0;
             if (word1.toLowerCase() == word2.toLowerCase()) return 0.1;
-            //if (options != "restrict") {
+            if (options != "restrict") {
                 /*let word1_norm = word1.toString().normalize("NFD").replace(/\p{Diacritic}/gu, "");
                 let word2_norm = word2.toString().normalize("NFD").replace(/\p{Diacritic}/gu, "");
                 if (word1_norm == word1_norm) return 0.2;
                 if (word1_norm.toLowerCase() == word2_norm.toLowerCase()) return 0.3;*/
-                //let levscore = levenshtein_score(5.5, 0.5, word1.toLowerCase(), word2.toLowerCase());
-              //  return Math.min(levscore, 1);
-            //}
+                return levenshtein_score(1, 0, word1.toLowerCase(), word2.toLowerCase());
+            }
             return 1;
         }
 
@@ -124,7 +124,7 @@
             if (text_array1.length>min_div_size && text_array2.length>min_div_size) { //we need to divide even more before comparing words
                 let lvl2array1 = new Array(div_amount);
                 let lvl2array2 = new Array(div_amount); //the arrays which will host the newly divided arrays
-                for (var j=0;j<100;j++) { //the process of homogeneously dividing the arrays
+                for (var j=0;j<div_amount;j++) { //the process of homogeneously dividing the arrays
                     let block_size_1 = text_array1.length/div_amount; //the average size of a block
                     let block_size_2 = text_array2.length/div_amount;
                     lvl2array1[j] = text_array1.slice(Math.floor(j*block_size_1),Math.floor((j+1)*block_size_1));
@@ -132,7 +132,7 @@
                 }
                 //we have two arrays of the text arrays divided into 100 each, we can use them to calculate levenshtein distance as well as the best path
                 let matrix = new Array(div_amount+1); //the matrix for the Levenshtein distance
-                for (var i=0;i<101;i++) { //filling the matrix with the basic costs (replaced by the Jaccard distance between the sets)
+                for (var i=0;i<div_amount+1;i++) { //filling the matrix with the basic costs (replaced by the Jaccard distance between the sets)
                     matrix[i] = new Array(div_amount+1);
                     for (var j=0;j<div_amount+1;j++) {
                         matrix[i][j] = (j==0) ? i : (i==0) ? j : /*(matrix[j]) ? matrix[j][i] :*/ jaccard_distance(lvl2array1[i-1],lvl2array2[j-1]);
@@ -206,7 +206,7 @@
                     dict.min_max[absolute_y+i].min = Math.min(dict.min_max[i].min, absolute_x);
                     dict.min_max[absolute_y+i].max = Math.max(dict.min_max[i].max, absolute_x+text_array2.length-1);
                     for (var j=0;j<text_array2.length;j++) { //only filling the blocks used
-                        dict[String(absolute_x+j)+","+String(absolute_y+i)] = score(text_array1[i],text_array2[j],"restrict"); //if the words are the same, the cost is 0
+                        dict[dkey(absolute_x+j,absolute_y+i)] = score(text_array1[i],text_array2[j],"restrict"); //if the words are the same, the cost is 0
                     }
                 }
                 //we now have a completed matrix for calculation of Levenshtein distance on a word basis
@@ -235,10 +235,10 @@
             for (var y=0;y<dict.min_max.length;y++) { //for every line of the matrix
                 for (var x = dict.min_max[y].min ; x <= dict.min_max[y].max ; x++) { //only in the used blocks
                     //min(cost on the left + 1, cost on the right + 1, cost on the diagonal + current cost)
-                    let left = (x==0) ? y+2 : (x==dict.min_max[y].min) ?  Infinity : dict[String(x-1)+","+String(y)]+1;
-                    let top  = (y==0) ? x+2 : (x>dict.min_max[y-1].max) ? Infinity : dict[String(x)+","+String(y-1)]+1;
-                    let diagonal = (y==0 && x==0) ? (0 + dict[String(x)+","+String(y)]) : (y==0) ? x+1 : (x==0) ? y+1 : (x-1 > dict.min_max[y-1].max || x-1 < dict.min_max[y-1].min) ? Infinity : dict[String(x-1)+","+String(y-1)]+dict[String(x)+","+String(y)];
-                    dict[String(x)+","+String(y)] = Math.min(left,top,diagonal);
+                    let left = (x==0) ? y+2 : (x==dict.min_max[y].min) ?  Infinity : dict[dkey(x-1,y)]+1;
+                    let top  = (y==0) ? x+2 : (x>dict.min_max[y-1].max) ? Infinity : dict[dkey(x,y-1)]+1;
+                    let diagonal = (y==0 && x==0) ? 0 : (y==0) ? x+1 : (x==0) ? y+1 : (x-1 > dict.min_max[y-1].max || x-1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1,y-1)]+dict[dkey(x,y)];
+                    dict[dkey(x,y)] = Math.min(left,top,diagonal);
                 }
             }
             return dict;
@@ -253,7 +253,7 @@
                 cost_dict.min_max[i].min = Infinity;
                 cost_dict.min_max[i].max = -Infinity;
             }
-            align(text_array1, text_array2, 0, 0, cost_dict,5000,100); //splits the texts into words and aligns them
+            align(text_array1, text_array2, 0, 0, cost_dict,1000,100); //splits the texts into words and aligns them
             if (start_time!=null) {
                 console.log("time taken to make the dict : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
                 dict_time = Date.now();
@@ -276,15 +276,15 @@
             var previous_direction = 0; //none, 1=up, 2=left, 3=diagonal (binary)
             while (x>=-1 && y>=-1) {
                 //console.log("x,y : "+x+","+y);
-                if (x==-1) { //on the left-most side of the dict
-                    if (y==-1) break; //on the top left corner
+                if (x<=-1) { //on the left-most side of the dict
+                    if (y<=-1) break; //on the top left corner
                     for (var i=y;i>=0;i--) {
                         result_array.push([2, text_array1[i],""]);
                         //console.log("up (on the left side)");
                     }
                     break;
                 }
-                else if (y==-1) { //on the top of the dict
+                if (y<=-1) { //on the top of the dict
                     for (var i=x;i>=0;i--) {
                         result_array.push([3, "",text_array2[i]]);
                         //console.log("left (on the top side)");
@@ -320,9 +320,12 @@
                         //console.log("left (no top square)");
                         x--;
                     }
+                    continue;
                 }
                 // now we know we're not on a border
-                
+                if (text_array1[y]==null) console.log("error in y="+y);
+                if (text_array2[x]==null) console.log("error in x="+x);
+                //console.log("not on border, word1 : "+text_array1[y]+", word2 : "+text_array2[x]);
                 let label = score(text_array1[y],text_array2[x],"restrict");
 
                 if (label<1) { //same word or slight change, we go diagonally
@@ -470,6 +473,157 @@
             }
             return result_array;
         }
+        var iter = 0;
+        //alternative tree pathmaking :
+        //the tree is an object, with sets of coordinates as keys and nodes as values
+        //a node is an object, with a "length" attribute (the length of the best path from this node to the end) and one to three other pairs of coordinates, to be used as keys in the tree
+        //the pathmaking algorithm works like so:
+        //      we check wether the keys are already in the tree with a node, if so we end the recursion
+        //      we create a node in the tree with the coordinates as the key
+        //      if we're in (0,0), we set the "length" attribute to 0 and end the recursion 
+        //      we check the values of the three following coordinate pairs (up, left and diagonal)
+        //      we reference all values with the lowest score (with keys up, left & diag)
+        //      we cycle through the referenced values to apply the recursion
+        //      after the recursion has been applied, we compare the lengths of the referenced nodes
+        //      we modulate the diagonal node if there is one according to wether the words correspond or not (-1 if they do, +1 if they don't)
+        //      we only keep the nodes with the lowest values, we delete the other ones (from the node, not from the tree)
+        //      we end the recursion
+        //after the tree has been made, we can go through it to create the result array :
+        //      if we are in (0,0), we end the loop
+        //      if there's only one node, we add the corresponding block to the result array and go to that node
+        //      if not :
+        //          if there's a diag key and the score of the two words is less than one, we go there
+        //          else, we do a simple coordinate check to decide between left and right if the two are there
+        function tree_maker(dict, tree, x, y, text_array1, text_array2) {
+            if (dkey(x,y) in tree) return;
+            iter++;
+            console.log(iter);
+            //console.log("tree maker at x,y : "+x+","+y);
+            if (x==-1) {
+                if (y==-1) {
+                    tree["-1,-1"] = {length:0};
+                    return;
+                }
+                tree[dkey(x,y)] = {length:(1+y),up:true};
+                tree_maker(dict,tree,x,y-1,text_array1,text_array2);
+                return;
+            }
+            if (y==-1) {
+                tree[dkey(x,y)] = {length:(1+x),left:true};
+                tree_maker(dict,tree,x-1,y,text_array1,text_array2);
+                return;
+            }
+            //console.log("not on dict border");
+            tree[dkey(x,y)] = {};
+            let current_node = tree[dkey(x,y)]; //the only variable stored inside the function call, should get rid of it if 'Maximum call stack size exceeded error' happens
+            if (x==0 && y==0) {
+                current_node.diag = true;
+            }
+            else if (!(dkey(x-1,y) in dict)) { //left is null, on border
+                if (dkey(x-1,y-1) in dict) { //opportunity to go diag, we have to check
+                    //console.log("up and diag");
+                    if (dict[dkey(x-1,y-1)] <= dict[dkey(x-1,y)]) current_node.diag = true;
+                    if (dict[dkey(x,y-1)] <= dict[dkey(x-1,y-1)]) current_node.up = true;
+                }
+                else { //we can only go up
+                    //console.log("only up");
+                    current_node.up = true;
+                }
+            }
+            else if (!(dkey(x,y-1) in dict)) { //top is null, on border
+                if (dkey(x-1,y-1) in dict) { //opportunity to go diag, we have to check
+                    //console.log("left and diag");
+                    if (dict[dkey(x-1,y-1)] <= dict[dkey(x,y-1)]) current_node.diag = true;
+                    if (dict[dkey(x-1,y)] <= dict[dkey(x-1,y-1)]) current_node.left = true;
+                }
+                else { //we can only go left
+                    //console.log("only left");
+                    current_node.left = true;
+                }
+            }
+            else { //neither are null, all three values are accessible
+                //console.log("all 3 values accessible");
+                if (dict[dkey(x-1,y-1)] <= dict[dkey(x,y-1)] && dict[dkey(x-1,y-1)] <= dict[dkey(x-1,y)]) current_node.diag = true;
+                if (dict[dkey(x-1,y)] <= dict[dkey(x-1,y-1)] && dict[dkey(x-1,y)] <= dict[dkey(x,y-1)]) current_node.left = true;
+                if (dict[dkey(x,y-1)] <= dict[dkey(x-1,y-1)] && dict[dkey(x,y-1)] <= dict[dkey(x-1,y)]) current_node.up = true;
+            }
+            //we can cycle through the values
+            if ("left" in current_node) tree_maker(dict,tree,x-1,y,text_array1,text_array2);
+            if ("up" in current_node) tree_maker(dict,tree,x,y-1,text_array1,text_array2);
+            if ("diag" in current_node) tree_maker(dict,tree,x-1,y-1,text_array1,text_array2);
+            //we can now add the length
+            current_node.left_length = ("left" in current_node) ? tree[dkey(x-1,y)].length + 1 : Infinity;
+            current_node.up_length = ("up" in current_node) ? tree[dkey(x,y-1)].length + 1 : Infinity;
+            current_node.diag_length = ("diag" in current_node) ? ((score(text_array1[y],text_array2[x]) < 1) ? tree[dkey(x-1,y-1)].length : tree[dkey(x-1,y-1)].length+2) : Infinity;
+            current_node.length = Math.min(current_node.left_length, current_node.up_length, current_node.diag_length);
+            if (current_node.left_length > current_node.length) delete current_node.left;
+            if (current_node.up_length > current_node.length) delete current_node.up;
+            if (current_node.diag_length > current_node.length) delete current_node.diag;
+            delete current_node.left_length;
+            delete current_node.diag_length;
+            delete current_node.up_length;
+            return;
+        }
+
+        function alt_make_out_path(dict, text_array1, text_array2) {
+            let result_array = new Array();
+            // in the result Array, 0 is unchanged, any number between 0 and 1 is changed with variations, 2 is removed (up), 3 is added (left)
+            let x = text_array2.length-1;
+            let y = text_array1.length-1;
+            var tree = {};
+            tree_maker(dict, tree, x, y, text_array1, text_array2);
+            
+            while (x>=-1 || y>=-1) {
+                if (x<=-1 && y>=-1) break;
+                //console.log("pathmaking in x,y : "+x+","+y);
+                let current_node = tree[dkey(x,y)];
+                if ("diag" in current_node) {
+                    let label = score(text_array1[y],text_array2[x]);
+                    if (((!("left" in current_node)) && (!("up" in current_node))) || (label<1)) {
+                        console.log("diag (only option or words similar)");
+                        result_array.push([label,text_array1[y],text_array2[x]]);
+                        x--;
+                        y--;
+                    }
+                    else if ("left" in current_node) {
+                        if ("up" in current_node && y>=x) {
+                            console.log("up (rather than diag, y>=x)");
+                            result_array.push([2,text_array1[y],""]);
+                            y--;
+                        }
+                        else {
+                            result_array.push([3,"",text_array2[x]]);
+                            console.log("left (rather than diag, y<x)");
+                            x--;
+                        }
+                    }
+                    else {
+                        console.log("up (rather than diag, left not considered)");
+                        result_array.push([2,text_array1[y],""]);
+                        y--;
+                    }
+                }
+                else if ("up" in current_node) {
+                    if ("left" in current_node && x>y) {
+                        console.log("left (left = up & y<x)");
+                        result_array.push([3,"",text_array2[x]]);
+                        x--;
+                    }
+                    else {
+                        console.log("up (best option)");
+                        result_array.push([2,text_array1[y],""]);
+                        y--;
+                    }
+                }
+                else {
+                    console.log("left (best option)");
+                    result_array.push([3,"",text_array2[x]]);
+                    x--;
+                }
+            }
+            delete tree;
+            return result_array;
+        }
 
         function bring_text_back(text_array, text1, text2) { //fuses strings of similar nature and adds punctuation
             let result_array = [];
@@ -522,6 +676,7 @@
             if (typeint==0.1) return "changed typecase";
             if (typeint==0.2) return "changed diacritics";
             if (typeint==0.3) return "changed typecase diacritics";
+            if (typeint==1) return "non_corresponding"
             return "changed";
         }
 
@@ -595,7 +750,7 @@
             document.querySelector("#align_button").addEventListener("click",function(){ //on click
                 //remove visibility of button and interaction with textareas
                 change_to_loading_screen();
-                setTimeout(function(){
+                //setTimeout(function(){
                     let start = Date.now();
                     var left_text = document.querySelector("#left_textarea").value; //scans the left textarea
                     var right_text = document.querySelector("#right_textarea").value; //scans the right textarea
@@ -611,6 +766,7 @@
                     var path_ta = make_out_path(levenshtein_dict, ta1, ta2);
                     console.log("time taken to make the path : " + (Date.now() - path_time) + " ms, total time : " + (Date.now() - start) + " ms");
                     path_ta.reverse();
+                    console.log(path_ta);
                     //then bring_text_back to fuse the groups and add punctuation
                     path_ta = bring_text_back(path_ta, left_text, right_text);
 
@@ -622,7 +778,7 @@
                     change_to_result_screen();
                     console.log("result shown, total time : " + (Date.now() - start) + " ms");
                     //tadaaaaaa
-                }, 10);
+                //}, 10);
             });
             document.querySelectorAll(".text_part").forEach(element => {
                 var id = element.id.split('_');
