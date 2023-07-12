@@ -1,11 +1,3 @@
-* {
-    /*scroll-behavior: smooth;*/
-}
-
-/*html {
-    height: 100%;
-}*/
-
 body {
     margin: 0;
     height: 100%;
@@ -110,6 +102,27 @@ textarea {
     flex: 0 0 auto;
     align-self: stretch;
     justify-content: center;
+}
+
+#grid_popup {
+    position: fixed;
+    left: 5%;
+    top: 5%;
+    bottom: 20%;
+    right: 5%;
+    z-index: 10;
+}
+
+.path_cell {
+    background-color: azure;
+}
+
+#popup_closer_button {
+    position: fixed;
+    bottom: 10%;
+    left: auto;
+    right: auto;
+    z-index: 10;
 }
 
 @keyframes spin {
