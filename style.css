@@ -6,7 +6,7 @@ body {
 
 header {
     padding: 0 0.5em;
-    height: 130px;
+    height: 100px;
     background-color: #E0E0E0;
     display: flex;
     flex-flow: row wrap;
@@ -19,32 +19,36 @@ header {
 
 #links {
     width: 286px;
-    height: 120px;
+    height: 90px;
     margin: 5px 0.5em;
+}
+
+#links_list {
+    margin: 0;
+    padding: 0;
+    height: 90px;
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+    justify-content: space-evenly;
 }
 
 #logo_div {
     margin: 5px 0.5em;
+    width: 286px;
 }
 
 #logo_anchor {
     display:flex;
 }
 
-footer  {
-    height: 80px;
-    background-color: #E0E0E0;
-    text-align: center;
-    line-height: 80px;
-    overflow: hidden;
-    position: fixed;
-    left: 0;
-    bottom: 0;
-    width: 100%;
-}
-
 button {
     width: 90px;
+    height: 30px;
+    margin: 1em;
+}
+
+.checkbox_container {
     height: 30px;
     margin: 1em;
 }
@@ -85,8 +89,8 @@ textarea {
     position: absolute;
     left: 0;
     right: 0;
-    bottom: 80px;
-    top: 130px;
+    bottom: 30px;
+    top: 100px;
 }
 
 #innerbox {
@@ -148,6 +152,7 @@ textarea {
     background-color: white;
     height: auto;
     width: auto;
+    overflow-wrap: break-word;
 }
 
 .text_part {
