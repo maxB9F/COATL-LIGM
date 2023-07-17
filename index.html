@@ -311,11 +311,12 @@
         */
         function score(word1, word2, options) {
             if (word1 == word2) return 0;
-            if ((("typecase" in options) && (options.typecase!=null)) && (word1.toLowerCase() == word2.toLowerCase())) return options.typecase;
-            /*let word1_norm = word1.toString().normalize("NFD").replace(/\p{Diacritic}/gu, "");
-            let word2_norm = word2.toString().normalize("NFD").replace(/\p{Diacritic}/gu, "");
-            if (word1_norm == word1_norm) return 0.2;
-            if (word1_norm.toLowerCase() == word2_norm.toLowerCase()) return 0.3;*/
+            if ((("typecase" in options) && (options.typecase != null)) && (word1.toLowerCase() == word2.toLowerCase())) return options.typecase;
+            if (("diacritics" in options) && (options.diacritics != null)) {
+                if (word1.normalize("NFD") == word2.normalize("NFD")) return options.diacritics;
+                if ((("typecase" in options) && (options.typecase != null)) && (word1.toLowerCase().normalize("NFD") == word2.toLowerCase().normalize("NFD"))) return options.typecase + options.diacritics;
+                //normalisation NKFD normalise également les ligatures et formes anciennes de lettres (s long par ex.), à considérer
+            }
             if (("scale" in options) && (options.scale!=null)) return levenshtein_score(options.scale[1], options.scale[0], word1.toLowerCase(), word2.toLowerCase());
             return 1;
         }
@@ -478,7 +479,7 @@
                     dict.min_max[absolute_y+i].min = Math.min(dict.min_max[absolute_y+i].min, absolute_x);
                     dict.min_max[absolute_y+i].max = Math.max(dict.min_max[absolute_y+i].max, absolute_x+text_array2.length-1);
                     for (var j=0;j<text_array2.length;j++) { //only filling the blocks used
-                        dict[dkey(absolute_x+j,absolute_y+i)] = score(text_array1[i],text_array2[j],{typecase:((alignment_options.typecase) ? 0 : 0.1)}); //if the words are the same, the cost is 0
+                        dict[dkey(absolute_x+j,absolute_y+i)] = score(text_array1[i],text_array2[j],{typecase:((alignment_options.typecase) ? 0 : 0.1), diacritics:((alignment_options.diacritics) ? 0 : 0.2)}); //if the words are the same, the cost is 0
                     }
                 }
             }
@@ -547,7 +548,7 @@
             let result_array = new Array();
             let x = text_array2.length-1;
             let y = text_array1.length-1;
-            let score_options = {typecase : ((alignment_options.typecase) ? 0 : 0.1), scale:[0,0.9]};
+            let score_options = {typecase : ((alignment_options.typecase) ? 0 : 0.1), diacritics:((alignment_options.diacritics) ? 0 : 0.2), scale:[0,0.9]};
 
             //we start in the bottom right corner
 
@@ -1041,6 +1042,16 @@
                     console.log("typecase false");
                 }
             });
+            document.querySelector("#diacritics_check").addEventListener("change", (event) => {
+                if (event.currentTarget.checked) {
+                    alignment_options.diacritics = true;
+                    console.log("diacritics true");
+                }
+                else {
+                    alignment_options.diacritics = false;
+                    console.log("diacritics false");
+                }
+            });
             //we hide the result panels
             document.querySelectorAll(".panel").forEach(element => {element.style.display = "none";});
             //we add the click listener for the align button
@@ -1122,6 +1133,10 @@
             <div class="checkbox_container">
                 <input type="checkbox" id="typecase_check">
                 <label for="typecase_check">Ignorer les différences de casse typographique</label>
+            </div>
+            <div class="checkbox_container">
+                <input type="checkbox" id="diacritics_check">
+                <label for="diacritics_check">Ignorer les différences de signes diacritiques</label>
             </div>
             <button id="align_button"  type="button">Align</button>
             <button id="reset_button"  type="button">Reset</button>

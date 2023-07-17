@@ -1,15 +1,6 @@
-avant 1.0 :
-finir interface : réparer ou supprimer l'animation
-trouver un nom définitif
-
-pour 1.0 :
-faire une version clean de l'intégralité du code : fusionner tout le code dans un seul fichier / séparer le code en plusieurs fichiers distincts
-garder une version non-clean pour développement (garder console.log, commentaires inutiles etc.)
-faire un host clean (gihub pages suffisant ?)
-
-après 1.0 :
+repenser le multi-échelle pour le bottleneck preventing (fonction auxilliaire topright et bottomleft ?) pour ne pas se retrouver avec des problèmes de min/max
 refaire la fusion de blocs ?
 ajouter fonctionnalités de comparaison supplémentaires
 ajouter fonctionnalités de téléchargement de l'outil et d'import/export de résultats
 ajouter version en Anglais (britannique de préférence)
-ajouter défilement vertical automatique entre blocs similaires
+ajouter défilement vertical automatique entre blocs similaires / soulignement parallèle
