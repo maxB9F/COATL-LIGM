@@ -724,7 +724,7 @@
                 var ta2 = (alignment_options.punct) ? string_to_words(right_text) : string_interlace(right_text);
                 if (ta1.length == 0 || ta2.length == 0) return;
                 change_to_loading_screen();
-                var levenshtein_dict = create_dict(ta1, ta2, start, alignment_options);
+                var levenshtein_dict = create_dict(ta1, ta2, alignment_options);
                 var path_ta = make_out_path(levenshtein_dict, ta1, ta2, alignment_options);
                 path_ta.reverse();
                 path_ta = alt_bring_text_back(path_ta, left_text, right_text, alignment_options);
