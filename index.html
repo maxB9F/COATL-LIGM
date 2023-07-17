@@ -4,8 +4,130 @@
     <meta charset="utf-8">
     <title>COATL</title>
     <link rel="stylesheet" href="style.css" type="text/css">
-    <script src='https://cdn.jsdelivr.net/gh/duhaime/minhash@master/minhash.min.js'>
-        //check license (MIT) if this is kept
+    <script>
+        /*The MIT License
+
+        Copyright (c) 2010-2018 Douglas Duhaime http://douglasduhaime.com
+
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+
+        The above copyright notice and this permission notice shall be included in
+        all copies or substantial portions of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+        THE SOFTWARE.*/
+        'use strict';
+
+        /**
+        * Minhash class - generates minhash signatures for set
+        **/
+        var Minhash = function(config) {
+
+        // prime is the smallest prime larger than the largest
+        // possible hash value (max hash = 32 bit int)
+        this.prime = 4294967311;
+        this.maxHash = Math.pow(2, 32) - 1;
+
+        // initialize the hash values as the maximum value
+        this.inithashvalues = function() {
+            for (var i=0; i<this.numPerm; i++) {
+            this.hashvalues.push(this.maxHash);
+            }
+        }
+
+        // initialize the permutation functions for a & b
+        // don't reuse any integers when making the functions
+        this.initPermutations = function() {
+            var used = {};
+            for (var i=0; i<2; i++) {
+            var perms = [];
+            for (var j=0; j<this.numPerm; j++) {
+                var int = this.randInt();
+                while (used[int]) int = this.randInt();
+                perms.push(int);
+                used[int] = true;
+            }
+            var key = ['permA', 'permB'][i];
+            this[key] = perms;
+            }
+        }
+
+        // the update function updates internal hashvalues given user data
+        this.update = function(str) {
+            for (var i=0; i<this.hashvalues.length; i++) {
+            var a = this.permA[i];
+            var b = this.permB[i];
+            var hash = (a * this.hash(str) + b) % this.prime;
+            if (hash < this.hashvalues[i]) {
+                this.hashvalues[i] = hash;
+            }
+            }
+        }
+
+        // hash a string to a 32 bit unsigned int
+        this.hash = function(str) {
+            var hash = 0;
+            if (str.length == 0) {
+            return hash + this.maxHash;
+            }
+            for (var i = 0; i < str.length; i++) {
+            var char = str.charCodeAt(i);
+            hash = ((hash<<5)-hash)+char;
+            hash = hash & hash; // convert to a 32bit integer
+            }
+            return hash + this.maxHash;
+        }
+
+        // estimate the jaccard similarity to another minhash
+        this.jaccard = function(other) {
+            if (this.hashvalues.length != other.hashvalues.length) {
+            throw new Error('hashvalue counts differ');
+            } else if (this.seed != other.seed) {
+            throw new Error('seed values differ');
+            }
+            var shared = 0;
+            for (var i=0; i<this.hashvalues.length; i++) {
+            shared += this.hashvalues[i] == other.hashvalues[i];
+            }
+            return shared / this.hashvalues.length;
+        }
+
+        // return a random integer >= 0 and <= maxHash
+        this.randInt = function() {
+            var x = Math.sin(this.seed++) * this.maxHash;
+            return Math.floor((x - Math.floor(x)) * this.maxHash);
+        }
+
+        // initialize the minhash
+        var config = config || {};
+        this.numPerm = config.numPerm || 128;
+        this.seed = config.seed || 1;
+        this.hashvalues = [];
+        this.permA = [];
+        this.permB = [];
+        // share permutation functions across all minhashes
+        this.inithashvalues();
+        this.initPermutations();
+        };
+
+        if (typeof window !== 'undefined') window.Minhash = Minhash;
+
+        if (typeof exports !== 'undefined') {
+        if (typeof module !== 'undefined' && module.exports) {
+            exports = module.exports = Minhash;
+        }
+        exports = Minhash;
+        }
     </script>
     <script>
         /**
@@ -102,15 +224,6 @@
          * @returns {number}
         */
         function jaccard_distance(array1, array2) {
-            /*let set1 = new Set(array1);
-            let set2 = new Set(array2);
-            let intersect = new Set();
-            for(var x of set1) if(set2.has(x)) intersect.add(x);
-            let union = new Set(set1);
-            for (var y of set2) union.add(y);
-            var res = 1.0 - (intersect.length)/(union.length);
-            console.log(res);
-            return res;*/
             let m1 = new Minhash();
             let m2 = new Minhash();
             array1.map(function(w) {m1.update(w)});
@@ -349,8 +462,8 @@
                     else if (x>=0 && y>=0) { //both coords are different, we went diagonally (and we're not in the bottom right)
                         let next_x_for_align = x_for_align - lvl2array2[coords[0]].length;
                         let next_y_for_align = y_for_align - lvl2array1[coords[1]].length;
-                        //align(lvl2array1[coords[1]], lvl2array2[x], x_for_align, next_y_for_align, dict, min_div_size, div_amount);
-                        //align(lvl2array1[y], lvl2array2[coords[0]], next_x_for_align, y_for_align, dict, min_div_size, div_amount);
+                        align(lvl2array1[y], lvl2array2[coords[0]], next_x_for_align, y_for_align, dict, min_div_size, div_amount, alignment_options);
+                        align(lvl2array1[coords[1]], lvl2array2[x], x_for_align, next_y_for_align, dict, min_div_size, div_amount, alignment_options);
                         x_for_align = next_x_for_align;
                         y_for_align = next_y_for_align;
                     }
@@ -362,8 +475,8 @@
             else { //we don't need to or cannot divide the texts more
                 for (var i=0;i<text_array1.length;i++) { //filling the dict with the basic costs (0 to 1)
                     //on every y coordinate, we need to use the absolute coordinates to shift the min_max values of the dict on this line
-                    dict.min_max[absolute_y+i].min = Math.min(dict.min_max[i].min, absolute_x);
-                    dict.min_max[absolute_y+i].max = Math.max(dict.min_max[i].max, absolute_x+text_array2.length-1);
+                    dict.min_max[absolute_y+i].min = Math.min(dict.min_max[absolute_y+i].min, absolute_x);
+                    dict.min_max[absolute_y+i].max = Math.max(dict.min_max[absolute_y+i].max, absolute_x+text_array2.length-1);
                     for (var j=0;j<text_array2.length;j++) { //only filling the blocks used
                         dict[dkey(absolute_x+j,absolute_y+i)] = score(text_array1[i],text_array2[j],{typecase:((alignment_options.typecase) ? 0 : 0.1)}); //if the words are the same, the cost is 0
                     }
@@ -381,7 +494,7 @@
         function propagate(dict) {
             for (var y=0;y<dict.min_max.length;y++) { //for every line of the matrix
                 for (var x = dict.min_max[y].min ; x <= dict.min_max[y].max ; x++) { //only in the existing cells
-                    //min(cost on the left + 1, cost on the right + 1, cost on the diagonal + current cost)
+                    //min(cost on the left + 1, cost on the right + 1, cost on the diagonal + 2 * current cost)
                     let left = (x==0) ? y+2 : (x==dict.min_max[y].min) ?  Infinity : dict[dkey(x-1,y)]+1;
                     let top  = (y==0) ? x+2 : (x>dict.min_max[y-1].max) ? Infinity : dict[dkey(x,y-1)]+1;
                     let diagonal = (y==0 && x==0) ? 0 : (y==0) ? x+1 : (x==0) ? y+1 : (x-1 > dict.min_max[y-1].max || x-1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1,y-1)]+(2*dict[dkey(x,y)]);
@@ -408,7 +521,7 @@
                 cost_dict.min_max[i].min = Infinity;
                 cost_dict.min_max[i].max = -Infinity;
             }
-            align(text_array1, text_array2, 0, 0, cost_dict,100000,10, alignment_options); //splits the texts into words and aligns them
+            align(text_array1, text_array2, 0, 0, cost_dict,5000,100, alignment_options); //splits the texts into words and aligns them
             if (start_time!=null) {
                 console.log("time taken to make the dict : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
                 dict_time = Date.now();
@@ -417,7 +530,6 @@
             cost_dict = propagate(cost_dict);
             if (start_time!=null) {
                 console.log("time taken to propagate : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
-                delete dict_time;
             }
             //we now have the full propagated cost dictionary with min and max values for each line, allowing us to skip past empty blocks
             return cost_dict;
@@ -697,7 +809,6 @@
                     x--;
                 }
             }
-            delete tree;
             return result_array;
         }
 
@@ -747,8 +858,6 @@
             return result_array;
         }
 
-
-        // !!! need to go further with the punctuation calculation (i.e. if the text starts with punctuation)
         /**
          * Fuses blocks of similar nature and adds punctuation.
          * @param {wordblock[]} text_array - The non-fused path
@@ -765,10 +874,18 @@
                 let punct_array_2 = string_to_punct(text2); //same for text 2
                 let pt_1 = 0;
                 let pt_2 = 0;
+                if (string_to_punct(string_interlace(text1)[0]).length !=0) {
+                    result_array.push({label:4, left: punct_array_1[pt_1], right:""});
+                    pt_1++;
+                }
+                if (string_to_punct(string_interlace(text2)[0]).length !=0) {
+                    result_array.push({label:4, left: "", right:punct_array_2[pt_2]});
+                    pt_2++;
+                }
                 for (var block of text_array) {
                     result_array.push(block);
-                    if (block.label != 3) {result_array.push({label:4, left: punct_array_1[pt_1], right:""}); pt_1++;}
-                    if (block.label != 2) {result_array.push({label:4, left: "", right:punct_array_2[pt_2]}); pt_2++;}
+                    if ((block.label != 3) && (pt_1 < punct_array_2.length)) {result_array.push({label:4, left: punct_array_1[pt_1], right:""}); pt_1++;}
+                    if ((block.label != 2) && (pt_2 < punct_array_2.length)) {result_array.push({label:4, left: "", right:punct_array_2[pt_2]}); pt_2++;}
                 }
                 return result_array;
             }
@@ -939,8 +1056,6 @@
                 var ta2 = (alignment_options.punct) ? string_to_words(right_text) : string_interlace(right_text);
                 console.log("length of right text : "+ta2.length+" blocks");
                 if (ta1.length==0 || ta2.length==0) {
-                    delete ta1;
-                    delete ta2;
                     return;
                 }
                 //need an await instruction here
@@ -962,12 +1077,6 @@
                 make_spans(path_ta);
                 //then we have to change page setup
                 change_to_result_screen();
-                delete left_text;
-                delete right_text;
-                delete ta1;
-                delete ta2;
-                delete levenshtein_dict;
-                delete path_ta;
                 console.log("result shown, total time : " + (Date.now() - start) + " ms");
             });
             document.querySelectorAll(".text_part").forEach(element => {
@@ -975,7 +1084,6 @@
                 element.addEventListener("click", function() {
                     scroll_to_id(id[1],id[0]);
                 });
-                delete id;
             });
         });
     </script>

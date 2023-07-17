@@ -1,6 +1,4 @@
 avant 1.0 :
-empêcher bottlenecks
-refaire la fusion de blocs ?
 finir interface : réparer ou supprimer l'animation
 trouver un nom définitif
 
@@ -10,6 +8,7 @@ garder une version non-clean pour développement (garder console.log, commentair
 faire un host clean (gihub pages suffisant ?)
 
 après 1.0 :
+refaire la fusion de blocs ?
 ajouter fonctionnalités de comparaison supplémentaires
 ajouter fonctionnalités de téléchargement de l'outil et d'import/export de résultats
 ajouter version en Anglais (britannique de préférence)
