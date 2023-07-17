@@ -485,6 +485,135 @@
             }
         }
 
+
+        // we're gonna try and split the align function in two :
+            // one creates the boundaries for calculation of the dict (that's where the multi-scale algorithm happens)
+            // the other one is fused with propagate, that's the values calculation
+
+        /**
+         * Divides the matrix in blocks and sets their boundaries as min and max for every line of the dict.
+         * @param {string[]} text_array1 - The full word array of text 1
+         * @param {string[]} text_array2 - The full word array of text 2
+         * @param {dict} dict - The dict to be modified
+         * @param {number} min_block_size - The size of the blocks
+        */
+        function make_dict_boundaries(text_array1, text_array2, dict, min_block_size) {
+            let div_amount = Math.floor(Math.min(text_array1.length, text_array2.length) / min_block_size);
+            if (div_amount > 2) {
+                /** @type {grid_display} */
+                let grid_display = {};
+                let lvl2array1 = new Array(div_amount);
+                let lvl2array2 = new Array(div_amount); //the arrays which will host the newly divided arrays
+                let block_size_1 = text_array1.length/div_amount; //the average size of a block
+                let block_size_2 = text_array2.length/div_amount;
+                console.log("number of blocks : "+div_amount+", minimal block size : "+min_block_size+", block y size : "+block_size_1+", block x size : "+block_size_2);
+                for (var j=0;j<div_amount;j++) { //the process of homogeneously dividing the arrays
+                    lvl2array1[j] = text_array1.slice(Math.floor(j*block_size_1),Math.floor((j+1)*block_size_1));
+                    lvl2array2[j] = text_array2.slice(Math.floor(j*block_size_2),Math.floor((j+1)*block_size_2));
+                }
+                //we have two arrays of the text arrays divided into 100 each, we can use them to calculate levenshtein distance as well as the best path
+                /** @type {matrix} */
+                let matrix = new Array(div_amount+1); //the matrix for the Levenshtein distance
+                grid_display.unpropagated = new Array(div_amount+1);
+                grid_display.propagated = new Array(div_amount+1);
+                for (var i=0;i<div_amount+1;i++) { //filling the matrix with the basic costs (replaced by the Jaccard distance between the sets)
+                    matrix[i] = new Array(div_amount+1);
+                    grid_display.unpropagated[i] = new Array(div_amount+1);
+                    grid_display.propagated[i] = new Array(div_amount+1);
+                    for (var j=0;j<div_amount+1;j++) {
+                        matrix[i][j] = (j==0) ? i : (i==0) ? j : ((i!=j) && (matrix[j] != null)) ? matrix[j][i] : jaccard_distance(lvl2array1[i-1],lvl2array2[j-1]);
+                        grid_display.unpropagated[i][j] = matrix[i][j];
+                        if (j==0 || i==0) grid_display.propagated[i][j] = matrix[i][j];
+                        //console.log("cost before propagation in x:"+j+", y:"+i+" : "+matrix[i][j]);
+                    }
+                }
+                //we then have the second step (cost propagation)
+                for (var i=1;i<div_amount+1;i++) for (var j=1;j<div_amount+1;j++) {
+                    matrix[i][j] = Math.min(matrix[i-1][j]+1, matrix[i][j-1]+1, matrix[i-1][j-1]+matrix[i][j]);
+                    grid_display.propagated[i][j] = matrix[i][j];
+                    //console.log("cost after propagation in x:"+j+", y:"+i+" : "+matrix[i][j]);
+                }
+                //we now have the full matrix for both groups of a hundred arrays, we can make out the best path and do the recursion
+                /**@type {Array.<number[]>}*/
+                let path = new Array();
+                let x = div_amount; //the x and y coordinates to go through the matrix we just made (x for lvl2array2 and y for lvl2array1)
+                let y = div_amount; //we need to lower them by 1 to access the lvl 2 arrays are they're 100 blocks long compared to the 101*101 matrix
+                while (x>0 && y>0) { //while we haven't reached the top left corner
+                    if (x==1) { //automatic up
+                        path.push([x-1,y-1]);
+                        y-=1; //we go up
+                    }
+                    else if (y==1) { //automatic left
+                        path.push([x-1,y-1]);
+                        x-=1; //we go left
+                    }
+                    else {
+                        path.push([x-1,y-1]);
+                        if (x==1 && y==1) continue;
+                        let left_value = matrix[y][x-1];
+                        let top_value = matrix[y-1][x];
+                        let diagonal_value = matrix[y-1][x-1];   
+                        if (diagonal_value <= top_value) { //diagonal <= top
+                            if (diagonal_value <= left_value) { //diagonal <= top && diagonal <= left
+                                path.push([x,y-1]);
+                                path.push([x-1,y]);
+                                x-=1;
+                                y-=1; //we go in diagonal;
+                            }
+                            //left < diagonal <= top
+                            else {
+                                x-=1; //we go left
+                            }
+                        }
+                        //top < diagonal
+                        else if (left_value <= top_value) { //left <= top < diagonal
+                            x-=1; //we go left, same process as before
+                        }
+                        //top < left < diagonal
+                        else {
+                            y-=1; //we go up
+                        }
+                    }
+                }
+                grid_display.path = [...path];
+                show_path(grid_display);
+                // our path is made, we can now set the min and max of every line
+                // first we have to make an array to simplify absolute coordinates calculation
+                let min_max_per_block = new Array(lvl2array2.length);
+                min_max_per_block[0] = [0, lvl2array2[0].length-1];
+                for (var i=1;i<lvl2array2.length;i++) min_max_per_block[i] = [min_max_per_block[i-1][0] + lvl2array2[i].length, min_max_per_block[i-1][1] + lvl2array2[i].length];
+                let absolute_y_per_block = new Array(lvl2array1.length);
+                absolute_y_per_block[0] = [0, lvl2array1[0].length-1];
+                for (var i=1;i<lvl2array1.length;i++) absolute_y_per_block[i] = [absolute_y_per_block[i-1][0] + lvl2array1[i].length, absolute_y_per_block[i-1][1] + lvl2array1[i].length];
+                for (var coords of path) {
+                    for (var y = absolute_y_per_block[coords[1]][0]; y <= absolute_y_per_block[coords[1]][1]; y++) {
+                        dict.min_max[y].min = Math.min(dict.min_max[y].min, min_max_per_block[coords[0]][0]);
+                        dict.min_max[y].max = Math.max(dict.min_max[y].max, min_max_per_block[coords[0]][1]);
+                    }
+                }
+
+            }
+        }
+
+        /**
+         * Calculates the Levenshtein distance matrix in a dict.
+         * @param {string[]} text_array1 - The full word array of text 1 (y axis)
+         * @param {string[]} text_array2 - The full word array of text 2 (x axis)
+         * @param {dict} dict - The dict needs to have its min_max array already filled
+         * @param {alignmentOptions} alignment_options
+        */
+        function calculate_and_propagate(text_array1, text_array2, dict, alignment_options) {
+            for (var y=0;y<dict.min_max.length;y++) { //for every line of the matrix
+                for (var x = dict.min_max[y].min ; x <= dict.min_max[y].max ; x++) { //only in the existing cells
+                    //min(cost on the left + 1, cost on the right + 1, cost on the diagonal + 2 * current cost)
+                    let left = (x==0) ? y+2 : (x==dict.min_max[y].min) ?  Infinity : dict[dkey(x-1,y)]+1;
+                    let top  = (y==0) ? x+2 : (x>dict.min_max[y-1].max) ? Infinity : dict[dkey(x,y-1)]+1;
+                    let diagonal = (y==0 && x==0) ? 0 : (y==0) ? x+1 : (x==0) ? y+1 : (x-1 > dict.min_max[y-1].max || x-1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1,y-1)]+(2*score(text_array1[i],text_array2[j],{typecase:((alignment_options.typecase) ? 0 : 0.1), diacritics:((alignment_options.diacritics) ? 0 : 0.2)}));
+                    dict[dkey(x,y)] = Math.min(left,top,diagonal);
+                }
+            }
+        }
+
         /**
          * Propagates the scores in a unpropagated Levenshtein distance matrix
          * @param {Object} dict - The matrix
@@ -924,7 +1053,7 @@
             if (typeint==0.1) return "changed typecase";
             if (typeint==0.2) return "changed diacritics";
             if (typeint==0.3) return "changed typecase diacritics";
-            if (typeint==1) return "non_corresponding"
+            if (typeint==1) return "non_corresponding";
             return "changed";
         }
 

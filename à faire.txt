@@ -1,6 +1,23 @@
 repenser le multi-échelle pour le bottleneck preventing (fonction auxilliaire topright et bottomleft ?) pour ne pas se retrouver avec des problèmes de min/max
-refaire la fusion de blocs ?
+solution pour l'instant (à tester) : refonte de align+propagate en évitant la récursion
+refaire la fusion de blocs ? (pas dingue si on veut pouvoir se faire souligner simultanément les mots parallèles)
 ajouter fonctionnalités de comparaison supplémentaires
 ajouter fonctionnalités de téléchargement de l'outil et d'import/export de résultats
 ajouter version en Anglais (britannique de préférence)
 ajouter défilement vertical automatique entre blocs similaires / soulignement parallèle
+
+optimisation de TOUT
+complexités pour l'instant (n la taille du texte 1 et m la taille du texte 2 en mots):
+    - create_dict :             n * créer la cellule de min_max + appel des 2 fonctions suivantes (en gros n * m * une constante)
+    - make_dict_boundaries :    (n/min_block_size)*(m/min_block_size) * complexité de MinHash sur 2 sets de taille min_block_size
+                                encore une fois pour propagation (donc min entre 3 trucs + des additions)
+                                    on pourrait fusionner coût et propagation
+                                pathmaking basique dans une matrice (n/min_block_size)*(m/min_block_size)
+                                boucle dans le parcours et création de 2 arrays pour les min & max
+    - calculate_and_propagate : n*m * le temps nécessaire pour faire le score d'une case + choper les trois autres cases et faire la comparaison
+    - make_out_path :           au pire des cas (n + m) * beaucoup de tests et d'accès au dict 
+                                dans le meilleur des cas max(n,m) * bcp de tests et appel à la fonction score (avancée)
+    - alt_bring_text_back :     (n + m) * une petite constante
+    - make_spans :              pareil
+
+possibilités d'optimisation : pê le pathfinding, le multi-scale (qui est déjà bcp mieux)
