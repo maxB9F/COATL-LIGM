@@ -3,7 +3,143 @@
 <head>
     <meta charset="utf-8">
     <title>COATL</title>
-    <link rel="stylesheet" href="style.css" type="text/css">
+    <style>
+        body {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        header {
+            padding: 0 0.5em;
+            height: 100px;
+            background-color: #E0E0E0;
+            display: flex;
+            flex-flow: row wrap;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 0 10px 0 grey;
+            overflow: hidden;
+            margin-bottom: 1em;
+        }
+
+        #links {
+            width: 286px;
+            height: 90px;
+            margin: 5px 0.5em;
+        }
+
+        #links_list {
+            margin: 0;
+            padding: 0;
+            height: 90px;
+            display: flex;
+            flex-flow: column nowrap;
+            align-items: center;
+            justify-content: space-evenly;
+        }
+
+        #logo_div {
+            margin: 5px 0.5em;
+            width: 286px;
+        }
+
+        #logo_anchor {
+            display:flex;
+        }
+
+        button {
+            width: 90px;
+            height: 30px;
+            margin: 1em;
+        }
+
+        .checkbox_container {
+            height: 30px;
+            margin: 1em;
+        }
+
+        textarea, .panel {
+            margin: 1em;
+            margin-bottom: 0;
+            min-width: 20em;
+            min-height: 10em;
+            max-height: 100vh;
+            max-width: 100vw;
+            padding: 1em;
+            font-size: 16px;
+            flex: 0 5 100%;
+            align-self: stretch;
+            border-radius: 3px;
+        }
+
+        textarea {
+            resize: none;
+        }
+
+        .box {
+            display:flex;
+            align-items: center;
+        }
+
+        #outerbox {
+            flex-flow: column nowrap;
+            height: auto;
+            width: 100%;
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 30px;
+            top: 100px;
+        }
+
+        #innerbox {
+            flex-flow: row nowrap;
+            padding: 0 3em;
+            min-height: 0;
+            flex: 0 10 100%;
+            align-self: stretch;
+        }
+
+        #button_box {
+            flex-flow: row wrap;
+            flex: 0 0 auto;
+            align-self: stretch;
+            justify-content: center;
+        }
+
+        .panel {
+            overflow-y: auto;
+            background-color: white;
+            height: auto;
+            width: auto;
+            overflow-wrap: break-word;
+        }
+
+        .text_part {
+            white-space: pre-wrap;
+            color: rgb(40,40,40);
+        }
+
+        .changed {
+            color: white;
+            background-color: darkviolet;
+        }
+
+        .removed, #left_panel > .non_corresponding {
+            color: white;
+            background-color: red;
+        }
+
+        .added, #right_panel > .non_corresponding {
+            color: white;
+            background-color: blue;
+        }
+
+        #reset_button, #export_button {
+            display: none;
+        }
+    </style>
     <script>
         /*The MIT License
 
@@ -166,14 +302,6 @@
          * Options pertaining to the score of two blocks.
          * @typedef {Object} scoreOptions - Leave out the parameters that shouldn't be calculated (or set to null)
          * @property {number} typecase - The score added to words that are the same after typecase normalisation
-         * @property {number} diacritics - The score added to words that are the same after diacritics normalisation
-         * @property {number} synonymy - The score added to synonyms
-         * @property {number} archaism - The score added to archaisms
-         * @property {number} gender - The score added to words that are the same after gender normalisation
-         * @property {number} singular - The score added to words that are the same after normalisation to the singular form
-         * @property {number} tense - The score added to words that are the same after grammatical tense normalisation
-         * @property {number} root - The score added to words that share the same root (general grammatical normalisation)
-         * @property {number} semantics - The score added to words in the same semantic field
          * @property {number[]} scale - The scale for the Levenshtein score function. 
         */
 
@@ -186,8 +314,8 @@
          * @param {number} y
          * @returns {coords}
         */
-        function dkey(x,y) {
-            return (x+","+y);
+        function dkey(x, y) {
+            return (x + "," + y);
         }
 
         /**
@@ -196,7 +324,7 @@
          * @returns {string[]}
         */
         function string_to_words(text) {
-            return text.split(/[^\p{Script=Latin}]+/u).filter(block => block.length > 0); //the string is split according to the regular expression
+            return text.split(/[^\p{Script=Latin}]+/u).filter(block => block.length > 0);
         }
         
         /**
@@ -228,7 +356,6 @@
             let m2 = new Minhash();
             array1.map(function(w) {m1.update(w)});
             array2.map(function(w) {m2.update(w)});
-            //console.log(1 - m1.jaccard(m2));
             return 1 - m1.jaccard(m2);
         }
 
@@ -241,31 +368,25 @@
          * @param {string[]} array_y - The array of words corresponding to the y coordinate
          * @returns {number}
         */
-        function shortest_path(matrix,x,y, array_x, array_y) {
-            if (x==0) return y;
-            if (y==0) return x;
+        function shortest_path(matrix, x, y, array_x, array_y) {
+            if (x == 0) return y;
+            if (y == 0) return x;
             let left = matrix[y][x-1];
             let top = matrix[y-1][x];
             let diag = matrix[y-1][x];
             if (left < diag) {
-                if (top < left) return 1 + shortest_path(matrix,x,y-1, array_x, array_y);
-                if (left < top) return 1 + shortest_path(matrix,x-1,y, array_x, array_y);
-                return 1 + Math.min(shortest_path(matrix,x,y-1, array_x, array_y), shortest_path(matrix,x-1,y, array_x, array_y));
+                if (top < left) return 1 + shortest_path(matrix, x, y-1, array_x, array_y);
+                if (left < top) return 1 + shortest_path(matrix, x-1, y, array_x, array_y);
+                return 1 + Math.min(shortest_path(matrix, x, y-1, array_x, array_y), shortest_path(matrix, x-1, y, array_x, array_y));
             }
-            // diag <= left
-            if (top < diag) return 1 + shortest_path(matrix,x,y-1, array_x, array_y);
-            // diag <= top && diag <= left
-            if (array_x[x-1]==array_y[y-1]) {
-                return shortest_path(matrix,x-1,y-1, array_x, array_y);
-            }
-            // add 2 to diag
+            if (top < diag) return 1 + shortest_path(matrix, x, y-1, array_x, array_y);
+            if (array_x[x-1] == array_y[y-1]) return shortest_path(matrix, x-1, y-1, array_x, array_y);
             if (diag == top) {
-                if (diag == left) return Math.min(1+shortest_path(matrix,x,y-1, array_x, array_y), 1+shortest_path(matrix,x-1,y, array_x, array_y), 2+shortest_path(matrix,x-1,y-1, array_x, array_y));
-                return Math.min(1+shortest_path(matrix,x,y-1, array_x, array_y), 2+shortest_path(matrix,x-1,y-1, array_x, array_y));
+                if (diag == left) return Math.min(1 + shortest_path(matrix, x, y-1, array_x, array_y), 1 + shortest_path(matrix, x-1, y, array_x, array_y), 2 + shortest_path(matrix, x-1, y-1, array_x, array_y));
+                return Math.min(1 + shortest_path(matrix, x, y-1, array_x, array_y), 2 + shortest_path(matrix, x-1, y-1, array_x, array_y));
             }
-            if (diag == left) return Math.min(1+shortest_path(matrix,x-1,y, array_x, array_y), 2+shortest_path(matrix,x-1,y-1, array_x, array_y));
-            // diag < top && diag < left
-            return 2+shortest_path(matrix,x-1,y-1, array_x, array_y);
+            if (diag == left) return Math.min(1 + shortest_path(matrix, x-1, y, array_x, array_y), 2 + shortest_path(matrix, x-1, y-1, array_x, array_y));
+            return 2 + shortest_path(matrix, x-1, y-1, array_x, array_y);
         }
 
         /**
@@ -281,24 +402,15 @@
             let word1_array = word1.split('');
             let word2_array = word2.split('');
             let matrix = new Array(word1_array.length+1);
-            for (var i=0;i<word1_array.length+1;i++) {
+            for (var i = 0; i < word1_array.length + 1; i++) {
                 matrix[i] = new Array(word2_array.length+1);
-                for (var j=0;j<word2_array.length+1;j++) matrix[i][j] = (i==0) ? j : (j==0) ? i : (word1_array[i-1]==word2_array[j-1]) ? 0 : 1;
+                for (var j = 0; j < word2_array.length + 1; j++) matrix[i][j] = (i == 0) ? j : (j == 0) ? i : (word1_array[i-1] == word2_array[j-1]) ? 0 : 1;
             }
-            for (var i=1;i<word1_array.length+1;i++) {
-                for (var j=1;j<word2_array.length+1;j++) {
-                    matrix[i][j] = Math.max(matrix[i][j-1]+1, matrix[i-1][j]+1, (2*matrix[i][j])+matrix[i-1][j-1]);
-                }
-            }
+            for (var i = 1; i < word1_array.length + 1; i++) for (var j = 1; j < word2_array.length + 1; j++) matrix[i][j] = Math.max(matrix[i][j-1] + 1, matrix[i-1][j] + 1, (2 * matrix[i][j]) + matrix[i-1][j-1]);
             let result = shortest_path(matrix, word2_array.length, word1_array.length, word2_array, word1_array);
-            // shortest path mathematically possible : |word1.length - word2.length|
-            // longest path mathematically possible : word1.length + word2.length
-            // if we want a levensthein difference index between 0 and 1, we could convert it to that scale
-            // console.log("path length for "+word1+" & "+word2+" : "+result);
             let len_long = Math.max(word1_array.length, word2_array.length);
             let len_short = Math.min(word1_array.length, word2_array.length);
-            // right now, we're using this as this yields the best results
-            let return_value = (result > len_short) ? 1 : (a-b)*(result/len_short) + b;
+            let return_value = (result > len_short) ? 1 : (a - b) * (result / len_short) + b;
             return return_value;
         }
 
@@ -311,53 +423,9 @@
         */
         function score(word1, word2, options) {
             if (word1 == word2) return 0;
-            if ((("typecase" in options) && (options.typecase!=null)) && (word1.toLowerCase() == word2.toLowerCase())) return options.typecase;
-            /*let word1_norm = word1.toString().normalize("NFD").replace(/\p{Diacritic}/gu, "");
-            let word2_norm = word2.toString().normalize("NFD").replace(/\p{Diacritic}/gu, "");
-            if (word1_norm == word1_norm) return 0.2;
-            if (word1_norm.toLowerCase() == word2_norm.toLowerCase()) return 0.3;*/
-            if (("scale" in options) && (options.scale!=null)) return levenshtein_score(options.scale[1], options.scale[0], word1.toLowerCase(), word2.toLowerCase());
+            if ((("typecase" in options) && (options.typecase != null)) && (word1.toLowerCase() == word2.toLowerCase())) return options.typecase;
+            if (("scale" in options) && (options.scale != null)) return levenshtein_score(options.scale[1], options.scale[0], word1.toLowerCase(), word2.toLowerCase());
             return 1;
-        }
-
-        /**
-         * A grid corresponding to a Levenshtein distance matrix, both unpropagated and propagated, with the shortest path.
-         * @typedef {Object} grid_display
-         * @property {Array.<number[]>} path - An array of size 2 arrays representing coordinates : the shortest path from bottom right to top left.
-         * @property {matrix} unpropagated
-         * @property {matrix} propagated
-        */
-        /**
-         * Fills and displays the "grid_popup" table with a path in a Levenshtein distance matrix.
-         * @param {grid_display} grid_display
-        */
-        function show_path(grid_display) {
-            let grid_popup = document.getElementById("grid_popup"); //the table div to be filled
-            for (var y = 0; y < grid_display.unpropagated.length - 1; y++) {
-                let new_row = document.createElement("tr"); //we create a row
-                for (var x = 0; x < grid_display.unpropagated[0].length - 1; x++) {
-                    let new_cell = document.createElement("td"); //we create a cell
-                    new_cell.textContent = grid_display.unpropagated[y+1][x+1]; //we fill it with the corresponding score
-                    new_cell.id = "x"+x+"y"+y; //we give it it's id (coordinates)
-                    new_row.appendChild(new_cell); //we put the cell in the row
-                }
-                grid_popup.appendChild(new_row); //we put the row in the table
-            }
-            for (var coords of grid_display.path) { //we go through the path
-                let target_cell = document.getElementById("x"+String(coords[0])+"y"+String(coords[1])); //the current cell in the path
-                if (target_cell == null) console.log("cell null in x,y : "+coords[0]+","+coords[1]);
-                target_cell.classList.add("path_cell"); //we give it the "path_cell" class to highlight it
-            }
-            grid_popup.style.display = "block"; //we show the table
-            document.getElementById("popup_closer_button").style.display = "block"; //we show the closer button
-        }
-        
-        /**
-         * Hides the "grid_popup" table and its closer button.
-        */
-        function hide_path() {
-            document.getElementById("grid_popup").style.display = "none";
-            document.getElementById("popup_closer_button").style.display = "none";
         }
 
         /**
@@ -372,94 +440,58 @@
          * @param {alignmentOptions} alignment_options
         */
         function align(text_array1, text_array2, absolute_x, absolute_y,dict,min_div_size,div_amount, alignment_options) {
-            if (text_array1.length>min_div_size && text_array2.length>min_div_size) { //we need to divide even more before comparing words
-                /** @type {grid_display} */
-                let grid_display = {};
+            if (text_array1.length>min_div_size && text_array2.length>min_div_size) {
                 let lvl2array1 = new Array(div_amount);
-                let lvl2array2 = new Array(div_amount); //the arrays which will host the newly divided arrays
-                let block_size_1 = text_array1.length/div_amount; //the average size of a block
+                let lvl2array2 = new Array(div_amount);
+                let block_size_1 = text_array1.length/div_amount;
                 let block_size_2 = text_array2.length/div_amount;
-                for (var j=0;j<div_amount;j++) { //the process of homogeneously dividing the arrays
-                    lvl2array1[j] = text_array1.slice(Math.floor(j*block_size_1),Math.floor((j+1)*block_size_1));
-                    lvl2array2[j] = text_array2.slice(Math.floor(j*block_size_2),Math.floor((j+1)*block_size_2));
+                for (var j = 0; j < div_amount; j++) {
+                    lvl2array1[j] = text_array1.slice(Math.floor(j * block_size_1), Math.floor((j + 1) * block_size_1));
+                    lvl2array2[j] = text_array2.slice(Math.floor(j * block_size_2), Math.floor((j + 1) * block_size_2));
                 }
-                //we have two arrays of the text arrays divided into 100 each, we can use them to calculate levenshtein distance as well as the best path
                 /** @type {matrix} */
-                let matrix = new Array(div_amount+1); //the matrix for the Levenshtein distance
-                grid_display.unpropagated = new Array(div_amount+1);
-                grid_display.propagated = new Array(div_amount+1);
-                for (var i=0;i<div_amount+1;i++) { //filling the matrix with the basic costs (replaced by the Jaccard distance between the sets)
-                    matrix[i] = new Array(div_amount+1);
-                    grid_display.unpropagated[i] = new Array(div_amount+1);
-                    grid_display.propagated[i] = new Array(div_amount+1);
-                    for (var j=0;j<div_amount+1;j++) {
-                        matrix[i][j] = (j==0) ? i : (i==0) ? j : ((i!=j) && (matrix[j] != null)) ? matrix[j][i] : jaccard_distance(lvl2array1[i-1],lvl2array2[j-1]);
-                        grid_display.unpropagated[i][j] = matrix[i][j];
-                        if (j==0 || i==0) grid_display.propagated[i][j] = matrix[i][j];
-                        //console.log("cost before propagation in x:"+j+", y:"+i+" : "+matrix[i][j]);
-                    }
+                let matrix = new Array(div_amount + 1);
+                for (var i = 0; i < div_amount + 1; i++) {
+                    matrix[i] = new Array(div_amount + 1);
+                    for (var j = 0; j < div_amount + 1; j++) matrix[i][j] = (j == 0) ? i : (i == 0) ? j : ((i != j) && (matrix[j] != null)) ? matrix[j][i] : jaccard_distance(lvl2array1[i-1], lvl2array2[j-1]);
                 }
-                //we then have the second step (cost propagation)
-                for (var i=1;i<div_amount+1;i++) for (var j=1;j<div_amount+1;j++) {
-                    matrix[i][j] = Math.min(matrix[i-1][j]+1, matrix[i][j-1]+1, matrix[i-1][j-1]+matrix[i][j]);
-                    grid_display.propagated[i][j] = matrix[i][j];
-                    //console.log("cost after propagation in x:"+j+", y:"+i+" : "+matrix[i][j]);
-                }
-                //we now have the full matrix for both groups of a hundred arrays, we can make out the best path and do the recursion
+                for (var i = 1; i < div_amount + 1; i++) for (var j = 1; j < div_amount + 1; j++) matrix[i][j] = Math.min(matrix[i-1][j] + 1, matrix[i][j-1] + 1, matrix[i-1][j-1] + matrix[i][j]);
                 /**@type {Array.<number[]>}*/
                 let path = new Array();
-                let x = div_amount; //the x and y coordinates to go through the matrix we just made (x for lvl2array2 and y for lvl2array1)
-                let y = div_amount; //we need to lower them by 1 to access the lvl 2 arrays are they're 100 blocks long compared to the 101*101 matrix
-                while (x>0 && y>0) { //while we haven't reached the top left corner
-                    if (x==1) { //automatic up
-                        path.push([x-1,y-1]);
-                        y-=1; //we go up
-                    }
-                    else if (y==1) { //automatic left
-                        path.push([x-1,y-1]);
-                        x-=1; //we go left
-                    }
-                    else {
-                        path.push([x-1,y-1]);
-                        if (x==1 && y==1) continue;
+                let x = div_amount;
+                let y = div_amount;
+                while (x > 0 && y > 0) {
+                    if (x == 1) {
+                        path.push([x-1, y-1]);
+                        y--;
+                    } else if (y == 1) {
+                        path.push([x-1, y-1]);
+                        x--;
+                    } else {
+                        path.push([x-1, y-1]);
+                        if (x == 1 && y == 1) continue;
                         let left_value = matrix[y][x-1];
                         let top_value = matrix[y-1][x];
                         let diagonal_value = matrix[y-1][x-1];   
-                        if (diagonal_value <= top_value) { //diagonal <= top
-                            if (diagonal_value <= left_value) { //diagonal <= top && diagonal <= left
-                                x-=1;
-                                y-=1; //we go in diagonal;
+                        if (diagonal_value <= top_value) {
+                            if (diagonal_value <= left_value) {
+                                x--;
+                                y--;
                             }
-                            //left < diagonal <= top
-                            else {
-                                x-=1; //we go left
-                            }
+                            else x--;
                         }
-                        //top < diagonal
-                        else if (left_value <= top_value) { //left <= top < diagonal
-                            x-=1; //we go left, same process as before
-                        }
-                        //top < left < diagonal
-                        else {
-                            y-=1; //we go up
-                        }
+                        else if (left_value <= top_value) x--;
+                        else y--;
                     }
                 }
-                grid_display.path = [...path];
-                show_path(grid_display);
-                // our path is made, we can now align the blocks on our path and start the recursion
                 x = -1;
                 y = -1;
-                let x_for_align = absolute_x + text_array2.length - lvl2array2[div_amount-1].length; //the absolute x and y coordinates we'll give to the descending align functions
+                let x_for_align = absolute_x + text_array2.length - lvl2array2[div_amount-1].length;
                 let y_for_align = absolute_y + text_array1.length - lvl2array1[div_amount-1].length;
                 for (var coords of path) {
-                    if (coords[0]==x) { //x is the same : we went up
-                        y_for_align -= lvl2array1[coords[1]].length;
-                    }
-                    else if (coords[1]==y) { //y is the same : we went left
-                        x_for_align -= lvl2array2[coords[0]].length;
-                    }
-                    else if (x>=0 && y>=0) { //both coords are different, we went diagonally (and we're not in the bottom right)
+                    if (coords[0] == x) y_for_align -= lvl2array1[coords[1]].length;
+                    else if (coords[1]==y) x_for_align -= lvl2array2[coords[0]].length;
+                    else if (x >= 0 && y >= 0) {
                         let next_x_for_align = x_for_align - lvl2array2[coords[0]].length;
                         let next_y_for_align = y_for_align - lvl2array1[coords[1]].length;
                         align(lvl2array1[y], lvl2array2[coords[0]], next_x_for_align, y_for_align, dict, min_div_size, div_amount, alignment_options);
@@ -471,15 +503,11 @@
                     y = coords[1];
                     align(lvl2array1[y], lvl2array2[x], x_for_align, y_for_align, dict, min_div_size, div_amount, alignment_options);
                 }
-            }
-            else { //we don't need to or cannot divide the texts more
-                for (var i=0;i<text_array1.length;i++) { //filling the dict with the basic costs (0 to 1)
-                    //on every y coordinate, we need to use the absolute coordinates to shift the min_max values of the dict on this line
-                    dict.min_max[absolute_y+i].min = Math.min(dict.min_max[absolute_y+i].min, absolute_x);
-                    dict.min_max[absolute_y+i].max = Math.max(dict.min_max[absolute_y+i].max, absolute_x+text_array2.length-1);
-                    for (var j=0;j<text_array2.length;j++) { //only filling the blocks used
-                        dict[dkey(absolute_x+j,absolute_y+i)] = score(text_array1[i],text_array2[j],{typecase:((alignment_options.typecase) ? 0 : 0.1)}); //if the words are the same, the cost is 0
-                    }
+            } else {
+                for (var i = 0; i < text_array1.length; i++) {
+                    dict.min_max[absolute_y + i].min = Math.min(dict.min_max[absolute_y + i].min, absolute_x);
+                    dict.min_max[absolute_y + i].max = Math.max(dict.min_max[absolute_y + i].max, absolute_x + text_array2.length - 1);
+                    for (var j = 0; j < text_array2.length; j++) dict[dkey(absolute_x + j, absolute_y + i)] = score(text_array1[i], text_array2[j], {typecase: ((alignment_options.typecase) ? 0 : 0.1)});
                 }
             }
         }
@@ -492,14 +520,11 @@
          * @returns {dict}
         */
         function propagate(dict) {
-            for (var y=0;y<dict.min_max.length;y++) { //for every line of the matrix
-                for (var x = dict.min_max[y].min ; x <= dict.min_max[y].max ; x++) { //only in the existing cells
-                    //min(cost on the left + 1, cost on the right + 1, cost on the diagonal + 2 * current cost)
-                    let left = (x==0) ? y+2 : (x==dict.min_max[y].min) ?  Infinity : dict[dkey(x-1,y)]+1;
-                    let top  = (y==0) ? x+2 : (x>dict.min_max[y-1].max) ? Infinity : dict[dkey(x,y-1)]+1;
-                    let diagonal = (y==0 && x==0) ? 0 : (y==0) ? x+1 : (x==0) ? y+1 : (x-1 > dict.min_max[y-1].max || x-1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1,y-1)]+(2*dict[dkey(x,y)]);
-                    dict[dkey(x,y)] = Math.min(left,top,diagonal);
-                }
+            for (var y = 0; y < dict.min_max.length; y++) for (var x = dict.min_max[y].min; x <= dict.min_max[y].max; x++) {
+                let left = (x == 0) ? y + 2 : (x == dict.min_max[y].min) ?  Infinity : dict[dkey(x-1, y)] + 1;
+                let top  = (y == 0) ? x + 2 : (x > dict.min_max[y-1].max) ? Infinity : dict[dkey(x, y-1)] + 1;
+                let diagonal = (y == 0 && x == 0) ? 0 : (y == 0) ? x + 1 : (x == 0) ? y + 1 : (x - 1 > dict.min_max[y-1].max || x - 1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1, y-1)] + (2 * dict[dkey(x, y)]);
+                dict[dkey(x, y)] = Math.min(left, top, diagonal);
             }
             return dict;
         }
@@ -508,353 +533,73 @@
          * Creates a dictionary to store a Levensthein distance matrix.
          * @param {string[]} text_array1 - Array of words
          * @param {string[]} text_array2 - Array of words
-         * @param {?time} start_time - Start time of algorithm, set to null if no time should be displayed in console
          * @param {alignmentOptions} alignment_options
          * @returns {dict}
         */
-        function create_dict (text_array1, text_array2, start_time, alignment_options) {
-            if (start_time!=null) var dict_time = Date.now();
-            var cost_dict = {};
-            cost_dict.min_max = new Array(text_array1.length);
-            for (var i=0;i<cost_dict.min_max.length;i++) { //pre-filling the min_max array for an easier later filling
-                cost_dict.min_max[i] = {};
-                cost_dict.min_max[i].min = Infinity;
-                cost_dict.min_max[i].max = -Infinity;
-            }
-            align(text_array1, text_array2, 0, 0, cost_dict,5000,100, alignment_options); //splits the texts into words and aligns them
-            if (start_time!=null) {
-                console.log("time taken to make the dict : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
-                dict_time = Date.now();
-            }
-            //now we have the dict with costs between 0 and 1, we need to propagate before returning it
-            cost_dict = propagate(cost_dict);
-            if (start_time!=null) {
-                console.log("time taken to propagate : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
-            }
-            //we now have the full propagated cost dictionary with min and max values for each line, allowing us to skip past empty blocks
-            return cost_dict;
+        function create_dict (text_array1, text_array2, alignment_options) {
+            var cost_dict = {min_max: new Array(text_array1.length)};
+            for (var i = 0; i < text_array1.length; i++) cost_dict.min_max[i] = {min: Infinity, max: -Infinity};
+            align(text_array1, text_array2, 0, 0, cost_dict, 5000, 100, alignment_options);
+            return propagate(cost_dict);
         }
 
         /**
-         * The non-recursive pathmaking function, returns an array of result blocks corresponding to the best path available.
+         * Returns an array of result blocks corresponding to the best path available.
          * @param {!dict} dict - The fully propagated dictionary used
          * @param {!string[]} text_array1 - The full word array for text 1 (on the y axis)
          * @param {!string[]} text_array2 - The full word array for text 2 (on the x axis)
          * @param {alignmentOptions} alignment_options
          * @returns {wordblock[]}
         */
-        function make_out_path(dict,text_array1,text_array2, alignment_options) {   
+        function make_out_path(dict, text_array1,text_array2, alignment_options) {   
             let result_array = new Array();
-            let x = text_array2.length-1;
-            let y = text_array1.length-1;
-            let score_options = {typecase : ((alignment_options.typecase) ? 0 : 0.1), scale:[0,0.9]};
-
-            //we start in the bottom right corner
-
-            while (x>=-1 && y>=-1) { // this is only to avoid errors, the while should end on the 'break;' instructions if nothing wrong happens
-                //console.log("x,y : "+x+","+y);
-                if (x<=-1) { //on the left-most side of the dict
-                    if (y<=-1) break; //on the top left corner
-                    for (var i=y;i>=0;i--) {
-                        result_array.push({label:2, left:text_array1[i], right:""});
-                        //console.log("up (on the left side)");
-                    }
+            let x = text_array2.length - 1;
+            let y = text_array1.length - 1;
+            let score_options = {typecase: ((alignment_options.typecase) ? 0 : 0.1), scale: [0, 0.9]};
+            while (x >= -1 && y >= -1) {
+                if (x <= -1) {
+                    if (y <= -1) break;
+                    for (var i = y; i >= 0; i--) result_array.push({label: 2, left: text_array1[i], right: ""});
                     break;
                 }
-                if (y<=-1) { //on the top of the dict
-                    for (var i=x;i>=0;i--) {
-                        result_array.push({label:3, left:"", right:text_array2[i]});
-                        //console.log("left (on the top side)");
-                    }
+                if (y <= -1) {
+                    for (var i = x; i >= 0; i--) result_array.push({label: 3, left: "", right: text_array2[i]});
                     break;
                 }
-                let diagonal_value = (dkey(x-1,y-1) in dict) ? dict[dkey(x-1,y-1)] : null;
-                let left_value = (dkey(x-1,y) in dict) ? dict[dkey(x-1,y)] : null;
-                let top_value = (dkey(x,y-1) in dict) ?  dict[dkey(x,y-1)] : null;
-
-                // !!!! the following block (border) should be optimised using min_max
-
-                if (left_value==null && top_value==null) {
-                    result_array.push({label:score(text_array1[y],text_array2[x],score_options), left: text_array1[y], right:text_array2[x]});
-                    x--;
-                    y--;
-                    //console.log("diag (in 0,0 or no left nor top square)");
-                    continue;
-                }
-                if (left_value==null) { //we have to go up
-                    result_array.push({label:2, left:text_array1[y],right:""});
-                    //console.log("up (no left square)");
+                let diagonal_value = (dkey(x-1, y-1) in dict) ? dict[dkey(x-1, y-1)] : null;
+                let left_value = (dkey(x-1, y) in dict) ? dict[dkey(x-1, y)] : null;
+                let top_value = (dkey(x, y-1) in dict) ?  dict[dkey(x, y-1)] : null;
+                if (left_value == null) {
+                    result_array.push({label: 2, left: text_array1[y], right: ""});
                     y--;
                     continue;
                 }
-                else if (top_value==null) { //we have to go left
-                    result_array.push({label:3, left:"", right:text_array2[x]});
-                    //console.log("left (no top square)");
+                if (top_value == null) {
+                    result_array.push({label: 3, left: "", right: text_array2[x]});
                     x--;
                     continue;
                 }
-                //previous block to be restored in case of bottlenecking between diagional blocks
-
-
-                // now we know we're not on a border
-                if (text_array1[y]==null) console.log("error in y="+y);
-                if (text_array2[x]==null) console.log("error in x="+x);
-                //console.log("not on border, word1 : "+text_array1[y]+", word2 : "+text_array2[x]);
                 if (diagonal_value <= left_value && diagonal_value <= top_value) {
-                    let new_label = score(text_array1[y],text_array2[x],score_options); //non restricted label for further comparison
-                    if (new_label<1) {
-                        result_array.push({label:new_label, left: text_array1[y], right:text_array2[x]});
-                        //console.log("diag (diag <= top & diag <= left & non-strict score < 1)");
+                    let new_label = score(text_array1[y], text_array2[x], score_options);
+                    if (new_label < 1) {
+                        result_array.push({label: new_label, left: text_array1[y], right: text_array2[x]});
                         x--;
                         y--;
-                    }
-                    else if (left_value < top_value) {
-                        result_array.push({label:3, left:"", right:text_array2[x]});
-                        //console.log("left (non-strict score >=1 and left < top)");
+                    } else if (left_value < top_value) {
+                        result_array.push({label: 3, left: "", right: text_array2[x]});
                         x--;
-                    }
-                    else {
-                        result_array.push({label:2, left:text_array1[y],right:""});
-                        //console.log("up (non-strict score >=1 and top <= left)");
+                    } else {
+                        result_array.push({label: 2, left: text_array1[y], right: ""});
                         y--;
                     }
-                }
-                else if (left_value < top_value) {
-                    result_array.push({label:3, left:"", right:text_array2[x]});
-                    //console.log("left (score >=1 and left < top)");
+                } else if (left_value < top_value) {
+                    result_array.push({label: 3, left: "", right: text_array2[x]});
                     x--;
-                }
-                else {
-                    result_array.push({label:2, left:text_array1[y],right:""});
-                    //console.log("up (score >=1 and top <= left)");
+                } else {
+                    result_array.push({label: 2, left: text_array1[y], right: ""});
                     y--;
                 }
             }
-            return result_array;
-        }
-
-        // as of now, the two following functions are useless as we have optimised the make_out_path function's pathfinding by modifying the propagate function
-
-        //alternative tree pathmaking :
-        //the tree is an object, with sets of coordinates as keys and nodes as values
-        //a node is an object, with a "length" attribute (the length of the best path from this node to the end) and one to three other pairs of coordinates, to be used as keys in the tree
-        //the pathmaking algorithm works like so:
-        //      we check wether the keys are already in the tree with a node, if so we end the recursion
-        //      we create a node in the tree with the coordinates as the key
-        //      if we're in (0,0), we set the "length" attribute to 0 and end the recursion 
-        //      we check the values of the three following coordinate pairs (up, left and diagonal)
-        //      we reference all values with the lowest score (with keys up, left & diag)
-        //      we cycle through the referenced values to apply the recursion
-        //      after the recursion has been applied, we compare the lengths of the referenced nodes
-        //      we modulate the diagonal node if there is one according to wether the words correspond or not (-1 if they do, +1 if they don't)
-        //      we only keep the nodes with the lowest values, we delete the other ones (from the node, not from the tree)
-        //      we end the recursion
-        //after the tree has been made, we can go through it to create the result array :
-        //      if we are in (0,0), we end the loop
-        //      if there's only one node, we add the corresponding block to the result array and go to that node
-        //      if not :
-        //          if there's a diag key and the score of the two words is less than one, we go there
-        //          else, we do a simple coordinate check to decide between left and right if the two are there
-        /**
-         * An object representing a node in a path tree, corresponding to coordinates in a Levenshtein distance matrix.
-         * @typedef {object} node
-         * @param {boolean} diag - True if the diagonal path is the shortest
-         * @param {boolean} up - True if the upwards path is the shortest
-         * @param {boolean} left - True if the left path is the shortest
-         * @param {number} length - The length from this node to the final node (top left corner of the matrix)
-        */
-        /**
-         * A tree representing the shortest paths from the bottom right to the top left corners of a Levenshtein distance matrix, use .
-         * @typedef {object} path_tree - Use a 'coords' type key to access the node corresponding to those coordinates
-        */
-        /**
-         * Creates the tree of the shortest paths in a Levenshtein distance matrix (recursive).
-         * @param {!dict} dict - The Levenshtein distance matrix
-         * @param {!path_tree} tree - Used for recursion, set to empty object when calling externally
-         * @param {!number} x - Used for recursion, set to bottom right coordinate when calling externally
-         * @param {!number} y - Used for recursion, set to bottom right coordinate when calling externally
-         * @param {!string[]} text_array1 - The full word array for text 1 (on the y axis)
-         * @param {!string[]} text_array2 - The full word array for text 2 (on the x axis)
-        */
-        function tree_maker(dict, tree, x, y, text_array1, text_array2) {
-            if (dkey(x,y) in tree) return;
-            //console.log("tree maker at x,y : "+x+","+y);
-            //iter++; console.log(iter);
-            if (x==-1) {
-                if (y==-1) {
-                    tree["-1,-1"] = {length:0};
-                    return;
-                }
-                tree[dkey(x,y)] = {length:(1+y),up:true};
-                tree_maker(dict,tree,x,y-1,text_array1,text_array2);
-                return;
-            }
-            if (y==-1) {
-                tree[dkey(x,y)] = {length:(1+x),left:true};
-                tree_maker(dict,tree,x-1,y,text_array1,text_array2);
-                return;
-            }
-            //console.log("not on dict border");
-            tree[dkey(x,y)] = {};
-            let current_node = tree[dkey(x,y)]; //the only variable stored inside the function call, should get rid of it if 'Maximum call stack size exceeded error' happens
-            if (x==0 && y==0) {
-                current_node.diag = true;
-            }
-            else if (!(dkey(x-1,y) in dict)) { //left is null, on border
-                if (dkey(x-1,y-1) in dict) { //opportunity to go diag, we have to check
-                    //console.log("up and diag");
-                    if (dict[dkey(x-1,y-1)] <= dict[dkey(x-1,y)]) current_node.diag = true;
-                    if (dict[dkey(x,y-1)] <= dict[dkey(x-1,y-1)]) current_node.up = true;
-                }
-                else { //we can only go up
-                    //console.log("only up");
-                    current_node.up = true;
-                }
-            }
-            else if (!(dkey(x,y-1) in dict)) { //top is null, on border
-                if (dkey(x-1,y-1) in dict) { //opportunity to go diag, we have to check
-                    //console.log("left and diag");
-                    if (dict[dkey(x-1,y-1)] <= dict[dkey(x,y-1)]) current_node.diag = true;
-                    if (dict[dkey(x-1,y)] <= dict[dkey(x-1,y-1)]) current_node.left = true;
-                }
-                else { //we can only go left
-                    //console.log("only left");
-                    current_node.left = true;
-                }
-            }
-            else { //neither are null, all three values are accessible
-                //console.log("all 3 values accessible");
-                if (dict[dkey(x-1,y-1)] <= dict[dkey(x,y-1)] && dict[dkey(x-1,y-1)] <= dict[dkey(x-1,y)]) current_node.diag = true;
-                if (dict[dkey(x-1,y)] <= dict[dkey(x-1,y-1)] && dict[dkey(x-1,y)] <= dict[dkey(x,y-1)]) current_node.left = true;
-                if (dict[dkey(x,y-1)] <= dict[dkey(x-1,y-1)] && dict[dkey(x,y-1)] <= dict[dkey(x-1,y)]) current_node.up = true;
-            }
-            //we can cycle through the values
-            if ("left" in current_node) tree_maker(dict,tree,x-1,y,text_array1,text_array2);
-            if ("up" in current_node) tree_maker(dict,tree,x,y-1,text_array1,text_array2);
-            if ("diag" in current_node) tree_maker(dict,tree,x-1,y-1,text_array1,text_array2);
-            //we can now add the length
-            current_node.left_length = ("left" in current_node) ? tree[dkey(x-1,y)].length + 1 : Infinity;
-            current_node.up_length = ("up" in current_node) ? tree[dkey(x,y-1)].length + 1 : Infinity;
-            current_node.diag_length = ("diag" in current_node) ? ((score(text_array1[y],text_array2[x],{typecase:0.1}) < 1) ? tree[dkey(x-1,y-1)].length : tree[dkey(x-1,y-1)].length+2) : Infinity;
-            current_node.length = Math.min(current_node.left_length, current_node.up_length, current_node.diag_length);
-            if (current_node.left_length > current_node.length) delete current_node.left;
-            if (current_node.up_length > current_node.length) delete current_node.up;
-            if (current_node.diag_length > current_node.length) delete current_node.diag;
-            delete current_node.left_length;
-            delete current_node.diag_length;
-            delete current_node.up_length;
-            return;
-        }
-
-        /**
-         * The alternate pathmaking function, uses tree_maker to make sure the path chosen is the best.
-         * @param {!dict} dict - The Levenshtein distance matrix
-         * @param {!string[]} text_array1 - The full word array for text 1 (on the y axis)
-         * @param {!string[]} text_array2 - The full word array for text 2 (on the x axis)
-         * @returns {wordblock[]}
-        */
-        function alt_make_out_path(dict, text_array1, text_array2) {
-            let result_array = new Array();
-            // in the result Array, 0 is unchanged, any number between 0 and 1 is changed with variations, 2 is removed (up), 3 is added (left)
-            let x = text_array2.length-1;
-            let y = text_array1.length-1;
-            var tree = {};
-            tree_maker(dict, tree, x, y, text_array1, text_array2);
-            
-            while (x>=-1 || y>=-1) {
-                if (x<=-1 && y>=-1) break;
-                //console.log("pathmaking in x,y : "+x+","+y);
-                let current_node = tree[dkey(x,y)];
-                if ("diag" in current_node) {
-                    let new_label = score(text_array1[y],text_array2[x],{typecase:0.1,scale:[0,0.1]});
-                    if (((!("left" in current_node)) && (!("up" in current_node))) || (label<1)) {
-                        console.log("diag (only option or words similar)");
-                        result_array.push({label:new_label, left:text_array1[y], right:text_array2[x]});
-                        x--;
-                        y--;
-                    }
-                    else if ("left" in current_node) {
-                        if ("up" in current_node && y>=x) {
-                            console.log("up (rather than diag, y>=x)");
-                            result_array.push({label:2, left:text_array1[y], right:""});
-                            y--;
-                        }
-                        else {
-                            console.log("left (rather than diag, y<x)");
-                            result_array.push({label:3, left:"", right:text_array2[x]});
-                            x--;
-                        }
-                    }
-                    else {
-                        console.log("up (rather than diag, left not considered)");
-                        result_array.push({label:2, left:text_array1[y], right:""});
-                        y--;
-                    }
-                }
-                else if ("up" in current_node) {
-                    if ("left" in current_node && x>y) {
-                        console.log("left (left = up & y<x)");
-                        result_array.push({label:3, left:"", right:text_array2[x]});
-                        x--;
-                    }
-                    else {
-                        console.log("up (best option)");
-                        result_array.push({label:2, left:text_array1[y], right:""});
-                        y--;
-                    }
-                }
-                else {
-                    console.log("left (best option)");
-                    result_array.push({label:3, left:"", right:text_array2[x]});
-                    x--;
-                }
-            }
-            return result_array;
-        }
-
-        /**
-         * Fuses blocks of similar nature and adds punctuation.
-         * @param {wordblock[]} text_array - The non-fused path
-         * @param {string} text1 - The full first text (on the y axis)
-         * @param {string} text2 - The full second text (on the x axis)
-         * @returns {wordblock[]}
-        */
-        function bring_text_back(text_array, text1, text2) {
-            /** @type {wordblock[]}*/
-            let result_array = [];
-            let previous_label = 4; //the variable used to know wether to create a new block or not
-            let i = -1; //the index of the last block of result_array
-            let punct_array_1 = text1.split(/[\p{Script=Latin}]+/u); //the first text's punctuation
-            let punct_array_2 = text2.split(/[\p{Script=Latin}]+/u); //same for text 2
-            //console.log(text1.split(/[\p{Script=Latin}]+/u));
-            //console.log(text2.split(/[\p{Script=Latin}]+/u));
-            result_array.push({label:4, left:punct_array_1[0], right:punct_array_2[0]});
-            let pt_1 = 1;
-            let pt_2 = 1;
-            for (var block of text_array) {
-                console.log("current pair : label: "+block.label+", left: "+block.left+", right: "+block.right);
-                if (block.label!=previous_label) { //the current couple of words doesn't have the same label as the last, we create a new grouping
-                    i++;
-                    result_array.push({label:block.label, left:"", right:""});
-                    console.log("should be empty :" + result_array[i].left + result_array[i].right);
-                }
-                previous_label=block.label;
-                if (block.label!=3) { //there's a left word
-                    result_array[i].left += block.left + punct_array_1[pt_1];
-                    console.log("should not be empty :" + block.left);
-                    pt_1++;
-                }
-                if (block.label!=2) { //there's a right word
-                    result_array[i].right += block.right + punct_array_2[pt_2];
-                    console.log("should not be empty :" + block.right);
-                    pt_2++;
-                }
-                //console.log("current group : label: "+result_array[i].label+", left: "+result_array[i].left+", right: "+result_array[i].right);
-            }
-            result_array.push({label:4, left:"", right:""}); //if there's any punctuation left, we create a block for it with a punctuation label
-            i++;
-            if (pt_1<punct_array_1.length) result_array[i].left = punct_array_1[pt_1];
-            if (pt_2<punct_array_2.length) result_array[i].right = punct_array_2[pt_2];
             return result_array;
         }
 
@@ -870,44 +615,26 @@
             /** @type {wordblock[]} */
             let result_array = new Array(0);
             if (alignment_options.punct) {
-                let punct_array_1 = string_to_punct(text1); //the first text's punctuation
-                let punct_array_2 = string_to_punct(text2); //same for text 2
+                let punct_array_1 = string_to_punct(text1);
+                let punct_array_2 = string_to_punct(text2);
                 let pt_1 = 0;
                 let pt_2 = 0;
-                if (string_to_punct(string_interlace(text1)[0]).length !=0) {
-                    result_array.push({label:4, left: punct_array_1[pt_1], right:""});
+                if (string_to_punct(string_interlace(text1)[0]).length != 0) {
+                    result_array.push({label: 4, left: punct_array_1[pt_1], right: ""});
                     pt_1++;
                 }
-                if (string_to_punct(string_interlace(text2)[0]).length !=0) {
-                    result_array.push({label:4, left: "", right:punct_array_2[pt_2]});
+                if (string_to_punct(string_interlace(text2)[0]).length != 0) {
+                    result_array.push({label: 4, left: "", right: punct_array_2[pt_2]});
                     pt_2++;
                 }
                 for (var block of text_array) {
                     result_array.push(block);
-                    if ((block.label != 3) && (pt_1 < punct_array_2.length)) {result_array.push({label:4, left: punct_array_1[pt_1], right:""}); pt_1++;}
-                    if ((block.label != 2) && (pt_2 < punct_array_2.length)) {result_array.push({label:4, left: "", right:punct_array_2[pt_2]}); pt_2++;}
+                    if ((block.label != 3) && (pt_1 < punct_array_2.length)) {result_array.push({label:4, left: punct_array_1[pt_1], right: ""}); pt_1++;}
+                    if ((block.label != 2) && (pt_2 < punct_array_2.length)) {result_array.push({label:4, left: "", right: punct_array_2[pt_2]}); pt_2++;}
                 }
                 return result_array;
             }
             return text_array;
-        }
-
-        // !!!!!! currently broken, needs fixing
-        /**
-         * Function tied to a span, clicking on this span checks if there's a similar span on the other side (identified by id) and scrolls them both into view
-         * @param {string} block_id - The id of the span, with format (l|r)_[1-9][0-9]*
-        */
-        function scroll_to_id(block_id) { //scrolls to a certain block id on both sides
-            let left_block = document.getElementById("l_"+block_id);
-            let right_block = document.getElementById("r_"+block_id);
-            let left_panel = document.getElementById("left_panel");
-            let right_panel = document.getElementById("right_panel");
-            if (left_block!=null && right_block!=null) {
-                let right_block_pos = right_block.offsetTop - (right_panel.getBoundingClientRect().height - right_block.getBoundingClientRect().height)/2;
-                right_panel.scrollTo({top: right_block_pos, behavior: 'smooth'});
-                let left_block_pos = left_block.offsetTop - (left_panel.getBoundingClientRect().height - left_block.getBoundingClientRect().height)/2;
-                left_panel.scrollTo({top: left_block_pos, behavior: 'smooth'});
-            }
         }
 
         /**
@@ -921,8 +648,6 @@
             if (typeint==3) return "added";
             if (typeint==4) return "punct";
             if (typeint==0.1) return "changed typecase";
-            if (typeint==0.2) return "changed diacritics";
-            if (typeint==0.3) return "changed typecase diacritics";
             if (typeint==1) return "non_corresponding"
             return "changed";
         }
@@ -935,24 +660,21 @@
             let span_id = 0;
             for (var block of text_array) {
                 span_id++;
-                let classes = int_to_type(block.label).split(" "); //all the classes added
-                if (block.label!=3) { //create a span on the left
+                let classes = int_to_type(block.label).split(" ");
+                if (block.label != 3) {
                     let new_span_left = document.createElement("span");
-                    new_span_left.classList.add("text_part",classes);
-                    new_span_left.id = "l_"+span_id; //the span id used for synchronised scrolling
+                    new_span_left.classList.add("text_part", classes);
+                    new_span_left.id = "l_" + span_id;
                     new_span_left.textContent = block.left;
                     document.getElementById("left_panel").appendChild(new_span_left);
                 }
-                if (block.label!=2) { //create a span on the right
+                if (block.label != 2) {
                     let new_span_right = document.createElement("span");
-                    new_span_right.classList.add("text_part",classes);
-                    new_span_right.id = "r_"+span_id; //the span id used for synchronised scrolling
+                    new_span_right.classList.add("text_part", classes);
+                    new_span_right.id = "r_" + span_id;
                     new_span_right.textContent = block.right;
                     document.getElementById("right_panel").appendChild(new_span_right);
                 }
-                //add sync scrolling thingy
-                // !!!!! broken for now
-                //new_div.addEventListener("click", scroll_to_id(id,direction));
             }
         }
 
@@ -967,123 +689,47 @@
             document.querySelectorAll(".checkbox_container").forEach(element => {
                 element.style.display = "none"
             });
-            /*let loader = document.querySelector("#loader")
-            //loader.style.display = "block";
-            var op = 0.1;  // initial opacity
-            var timer = setInterval(function () {
-                if (op >= 1){
-                    clearInterval(timer);
-                }
-                loader.style.opacity = op;
-                loader.style.filter = 'alpha(opacity=' + op * 100 + ")";
-                op += op * 0.04;
-            }, 10);
-            delete op;
-            delete timer;*/
         }
 
         /**
          * Changes the page setup to display the results.
         */
         function change_to_result_screen() {
-            /*let loader = document.querySelector("#loader")
-            var op = 1;  // initial opacity
-            var timer = setInterval(function () {
-                if (op <=0.1) {
-                    clearInterval(timer);
-                }
-                loader.style.opacity = op;
-                loader.style.filter = 'alpha(opacity=' + op * 100 + ")";
-                op -= op * 0.06;
-            }, 10);
-            delete op;
-            delete timer;
-            loader.style.display = "none";*/
             document.querySelectorAll(".panel").forEach(element => {
                 element.style.display = "block";
             });
-            //document.querySelector("#reset_button").style.display = "block";
-            //document.querySelector("#export_button").style.display = "block";
-            
         }
 
         document.addEventListener("DOMContentLoaded", function(){
-            console.log("DOM Content Loaded");
-            //after the DOM has been loaded
-            //we hide the grid display
-            hide_path();
-            //we add the click listener for the popup closer
-            document.querySelector("#popup_closer_button").addEventListener("click",function() {
-                hide_path();
-            });
             /** @type {alignmentOptions} */
             var alignment_options = {
                 typecase: false,
                 punct: true
             };
             document.querySelector("#punct_check").addEventListener("change", (event) => {
-                if (event.currentTarget.checked) {
-                    alignment_options.punct = true;
-                    console.log("punct true");
-                }
-                else {
-                    alignment_options.punct = false;
-                    console.log("punct false");
-                }
+                if (event.currentTarget.checked) alignment_options.punct = true;
+                else alignment_options.punct = false;
             });
             document.querySelector("#typecase_check").addEventListener("change", (event) => {
-                if (event.currentTarget.checked) {
-                    alignment_options.typecase = true;
-                    console.log("typecase true");
-                }
-                else {
-                    alignment_options.typecase = false;
-                    console.log("typecase false");
-                }
+                if (event.currentTarget.checked) alignment_options.typecase = true;
+                else alignment_options.typecase = false;
             });
-            //we hide the result panels
             document.querySelectorAll(".panel").forEach(element => {element.style.display = "none";});
-            //we add the click listener for the align button
-            document.querySelector("#align_button").addEventListener("click",function(){ //on click
-                //remove visibility of button and interaction with textareas
-                let start = Date.now();
+            document.querySelector("#align_button").addEventListener("click",function(){
                 /** @type {string} */
-                var left_text = document.querySelector("#left_textarea").value; //scans the left textarea
+                var left_text = document.querySelector("#left_textarea").value;
                 /** @type {string} */
-                var right_text = document.querySelector("#right_textarea").value; //scans the right textarea
-                var ta1 = (alignment_options.punct) ? string_to_words(left_text) : string_interlace(left_text); //split the left text into words
-                console.log("length of left text : "+ta1.length+" blocks");
+                var right_text = document.querySelector("#right_textarea").value;
+                var ta1 = (alignment_options.punct) ? string_to_words(left_text) : string_interlace(left_text);
                 var ta2 = (alignment_options.punct) ? string_to_words(right_text) : string_interlace(right_text);
-                console.log("length of right text : "+ta2.length+" blocks");
-                if (ta1.length==0 || ta2.length==0) {
-                    return;
-                }
-                //need an await instruction here
+                if (ta1.length == 0 || ta2.length == 0) return;
                 change_to_loading_screen();
                 var levenshtein_dict = create_dict(ta1, ta2, start, alignment_options);
-                //now that we have the dict, we can do the pathmaking
-                console.log("starting pathfinding");
-                let path_time = Date.now();
                 var path_ta = make_out_path(levenshtein_dict, ta1, ta2, alignment_options);
-                console.log("time taken to make the path : " + (Date.now() - path_time) + " ms, total time : " + (Date.now() - start) + " ms");
                 path_ta.reverse();
-                console.log(path_ta);
-                //then bring_text_back to fuse the groups and add punctuation
                 path_ta = alt_bring_text_back(path_ta, left_text, right_text, alignment_options);
-
-                // ??? add second post-treatment step to make "changed" blocks out of adjacent "removed" and "added" blocks
-
-                //then make divs to create the divs inside of the panels
                 make_spans(path_ta);
-                //then we have to change page setup
                 change_to_result_screen();
-                console.log("result shown, total time : " + (Date.now() - start) + " ms");
-            });
-            document.querySelectorAll(".text_part").forEach(element => {
-                var id = element.id.split('_');
-                element.addEventListener("click", function() {
-                    scroll_to_id(id[1],id[0]);
-                });
             });
         });
     </script>
@@ -1092,7 +738,7 @@
     <header>
         <div id="logo_div">
             <a href="./index.html" id="logo_anchor">
-                <img width="90" height="90" src="./logoIGM-300x298.png" alt="Laboratoire d'Informatique Gaspard-Monge UMR 8049" decoding="async">
+                <img width="90" height="90" src="./logoIGM-300x298.png" alt="Laboratoire d'Informatique Gaspard-Monge" decoding="async">
             </a>
         </div>
         <div id="titlediv">
@@ -1101,12 +747,10 @@
         <div id="links">
             <ul id="links_list">
                 <li><a href="https://siteigm.univ-mlv.fr/" target="_blank">Site du LIGM</a></li>
-                <li><a href="https://github.com/maxB9F/COATL-LIGM">Dépôt Github</a></li>
+                <li><a href="https://github.com/maxB9F/COATL-LIGM" target="_blank">Dépôt Github</a></li>
             </ul>
         </div>
     </header>
-    <table id="grid_popup"></table>
-    <button id="popup_closer_button">Close</button>
     <div class="box" id="outerbox">
         <div class="box" id="innerbox">
             <textarea autocomplete="off" minlength="1" spellcheck="false" id="left_textarea" placeholder="La première version du texte"></textarea>
@@ -1128,6 +772,5 @@
             <button id="export_button" type="button">Export</button>
         </div>
     </div>
-    <img width="150" height="149" src="./logoIGM-300x298.png" id="loader">
 </body>
 </html>
