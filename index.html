@@ -618,7 +618,7 @@
                 }
                 for (var block of text_array) {
                     result_array.push(block);
-                    if ((block.label != 3) && (pt_1 < punct_array_2.length)) {result_array.push({label:4, left: punct_array_1[pt_1], right: ""}); pt_1++;}
+                    if ((block.label != 3) && (pt_1 < punct_array_1.length)) {result_array.push({label:4, left: punct_array_1[pt_1], right: ""}); pt_1++;}
                     if ((block.label != 2) && (pt_2 < punct_array_2.length)) {result_array.push({label:4, left: "", right: punct_array_2[pt_2]}); pt_2++;}
                 }
                 return result_array;
