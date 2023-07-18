@@ -397,7 +397,7 @@
                     else matrix[i][j] = Math.max(matrix[i][j-1] + 1, matrix[i-1][j] + 1, (2 * ((word1_array[i-1] == word2_array[j-1]) ? 0 : 1)) + matrix[i-1][j-1]);
                 } 
             }
-            let result = matrix[word1.length+1][word2.length+1];
+            let result = matrix[word1.length][word2.length];
             let len_long = Math.max(word1_array.length, word2_array.length);
             let len_short = Math.min(word1_array.length, word2_array.length);
             let return_value = (result > len_short) ? 1 : (a - b) * (result / len_short) + b;
