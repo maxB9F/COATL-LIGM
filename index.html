@@ -176,6 +176,14 @@
          * @property {number} semantics - The score added to words in the same semantic field
          * @property {number[]} scale - The scale for the Levenshtein score function. 
         */
+        /**
+         * A cell on the path of the make_dict_boundaries function.
+         * @typedef {object} multi_scale_cell
+         * @property {number} x_coord
+         * @property {number} y_coord
+         * @property {boolean} top_right
+         * @property {boolean} bottom_left
+        */
 
         var left_panel = document.getElementById("left_panel");
         var right_panel = document.getElementById("right_panel");
@@ -283,18 +291,20 @@
             let matrix = new Array(word1_array.length+1);
             for (var i=0;i<word1_array.length+1;i++) {
                 matrix[i] = new Array(word2_array.length+1);
-                for (var j=0;j<word2_array.length+1;j++) matrix[i][j] = (i==0) ? j : (j==0) ? i : (word1_array[i-1]==word2_array[j-1]) ? 0 : 1;
-            }
-            for (var i=1;i<word1_array.length+1;i++) {
-                for (var j=1;j<word2_array.length+1;j++) {
-                    matrix[i][j] = Math.max(matrix[i][j-1]+1, matrix[i-1][j]+1, (2*matrix[i][j])+matrix[i-1][j-1]);
+                for (var j=0;j<word2_array.length+1;j++) { 
+                    if (j==0) matrix[i][0] = i;
+                    else if (i==0) matrix[0][j] = j;
+                    else {
+                        matrix[i][j] = (word1_array[i-1]==word2_array[j-1]) ? 0 : 2;
+                        matrix[i][j] = Math.min(matrix[i][j-1]+1, matrix[i-1][j]+1, matrix[i][j]+matrix[i-1][j-1]);
+                    }
                 }
             }
-            let result = shortest_path(matrix, word2_array.length, word1_array.length, word2_array, word1_array);
+            let result = matrix[word1_array.length][word2_array.length];
             // shortest path mathematically possible : |word1.length - word2.length|
             // longest path mathematically possible : word1.length + word2.length
             // if we want a levensthein difference index between 0 and 1, we could convert it to that scale
-            // console.log("path length for "+word1+" & "+word2+" : "+result);
+            console.log("path length for "+word1+" & "+word2+" : "+result);
             let len_long = Math.max(word1_array.length, word2_array.length);
             let len_short = Math.min(word1_array.length, word2_array.length);
             // right now, we're using this as this yields the best results
@@ -324,7 +334,7 @@
         /**
          * A grid corresponding to a Levenshtein distance matrix, both unpropagated and propagated, with the shortest path.
          * @typedef {Object} grid_display
-         * @property {Array.<number[]>} path - An array of size 2 arrays representing coordinates : the shortest path from bottom right to top left.
+         * @property {multi_scale_cell} path - An array of size 2 arrays representing coordinates : the shortest path from bottom right to top left.
          * @property {matrix} unpropagated
          * @property {matrix} propagated
         */
@@ -345,8 +355,8 @@
                 grid_popup.appendChild(new_row); //we put the row in the table
             }
             for (var coords of grid_display.path) { //we go through the path
-                let target_cell = document.getElementById("x"+String(coords[0])+"y"+String(coords[1])); //the current cell in the path
-                if (target_cell == null) console.log("cell null in x,y : "+coords[0]+","+coords[1]);
+                let target_cell = document.getElementById("x"+String(coords.x_coord)+"y"+String(coords.y_coord)); //the current cell in the path
+                if (target_cell == null) console.log("cell null in x,y : "+coords.x_coord+","+coords.y_coord);
                 target_cell.classList.add("path_cell"); //we give it the "path_cell" class to highlight it
             }
             grid_popup.style.display = "block"; //we show the table
@@ -496,67 +506,88 @@
          * @param {string[]} text_array2 - The full word array of text 2
          * @param {dict} dict - The dict to be modified
          * @param {number} min_block_size - The size of the blocks
+         * @param {number} max_matrix_size - The max size of the matrix (in number of cells)
         */
-        function make_dict_boundaries(text_array1, text_array2, dict, min_block_size) {
-            let div_amount = Math.floor(Math.min(text_array1.length, text_array2.length) / min_block_size);
-            if (div_amount > 2) {
+        function make_dict_boundaries(text_array1, text_array2, dict, min_block_size, max_matrix_size) {
+            let div_amount_x = Math.floor(text_array2.length / min_block_size);
+            let div_amount_y = Math.floor(text_array1.length / min_block_size);
+            if (div_amount_x*div_amount_y > max_matrix_size) {
+                div_amount_x = Math.floor(Math.sqrt(max_matrix_size));
+                div_amount_y = Math.floor(Math.sqrt(max_matrix_size));
+            }
+            if (div_amount_x > 2 && div_amount_y > 2) {
                 /** @type {grid_display} */
                 let grid_display = {};
-                let lvl2array1 = new Array(div_amount);
-                let lvl2array2 = new Array(div_amount); //the arrays which will host the newly divided arrays
-                let block_size_1 = text_array1.length/div_amount; //the average size of a block
-                let block_size_2 = text_array2.length/div_amount;
-                console.log("number of blocks : "+div_amount+", minimal block size : "+min_block_size+", block y size : "+block_size_1+", block x size : "+block_size_2);
-                for (var j=0;j<div_amount;j++) { //the process of homogeneously dividing the arrays
-                    lvl2array1[j] = text_array1.slice(Math.floor(j*block_size_1),Math.floor((j+1)*block_size_1));
+                let lvl2array1 = new Array(div_amount_y);
+                let lvl2array2 = new Array(div_amount_x); //the arrays which will host the newly divided arrays
+                let block_size_1 = text_array1.length/div_amount_y; //the average size of a block
+                let block_size_2 = text_array2.length/div_amount_x;
+                console.log("number of blocks : "+div_amount_x*div_amount_y+", minimal block size : "+min_block_size+", block y size : "+block_size_1+", block x size : "+block_size_2);
+                for (var j=0;j<div_amount_x;j++) { //the process of homogeneously dividing the arrays
                     lvl2array2[j] = text_array2.slice(Math.floor(j*block_size_2),Math.floor((j+1)*block_size_2));
+                }
+                for (var j=0;j<div_amount_y;j++) {
+                    lvl2array1[j] = text_array1.slice(Math.floor(j*block_size_1),Math.floor((j+1)*block_size_1));
                 }
                 //we have two arrays of the text arrays divided into 100 each, we can use them to calculate levenshtein distance as well as the best path
                 /** @type {matrix} */
-                let matrix = new Array(div_amount+1); //the matrix for the Levenshtein distance
-                grid_display.unpropagated = new Array(div_amount+1);
-                grid_display.propagated = new Array(div_amount+1);
-                for (var i=0;i<div_amount+1;i++) { //filling the matrix with the basic costs (replaced by the Jaccard distance between the sets)
-                    matrix[i] = new Array(div_amount+1);
-                    grid_display.unpropagated[i] = new Array(div_amount+1);
-                    grid_display.propagated[i] = new Array(div_amount+1);
-                    for (var j=0;j<div_amount+1;j++) {
-                        matrix[i][j] = (j==0) ? i : (i==0) ? j : ((i!=j) && (matrix[j] != null)) ? matrix[j][i] : jaccard_distance(lvl2array1[i-1],lvl2array2[j-1]);
+                let matrix = new Array(div_amount_y+1); //the matrix for the Levenshtein distance
+                grid_display.unpropagated = new Array(div_amount_y+1);
+                grid_display.propagated = new Array(div_amount_y+1);
+                for (var i=0; i<div_amount_y+1; i++) {
+                    matrix[i] = new Array(div_amount_x+1);
+                    grid_display.unpropagated[i] = new Array(div_amount_x+1);
+                    grid_display.propagated[i] = new Array(div_amount_x+1);
+                    matrix[i][0] = i;
+                    grid_display.unpropagated[i][0] = i;
+                    grid_display.propagated[i][0] = i;
+                }
+                for (var i=1; i<div_amount_x+1; i++) {
+                    matrix[0][i] = i;
+                    grid_display.unpropagated[0][i] = i;
+                    grid_display.propagated[0][i] = i;
+                }
+                for (var i=1;i<div_amount_y+1;i++) { //filling the matrix with the basic costs (replaced by the Jaccard distance between the sets)
+                    for (var j=1;j<div_amount_x+1;j++) {
+                        matrix[i][j] = ((i!=j) && (matrix[j] != null) && (matrix[j][i] != null)) ? matrix[j][i] : jaccard_distance(lvl2array1[i-1],lvl2array2[j-1]);
                         grid_display.unpropagated[i][j] = matrix[i][j];
-                        if (j==0 || i==0) grid_display.propagated[i][j] = matrix[i][j];
                         //console.log("cost before propagation in x:"+j+", y:"+i+" : "+matrix[i][j]);
+                        matrix[i][j] = Math.min(matrix[i-1][j]+1, matrix[i][j-1]+1, matrix[i-1][j-1]+matrix[i][j]);
+                        grid_display.propagated[i][j] = matrix[i][j];
+                        //console.log("cost after propagation in x:"+j+", y:"+i+" : "+matrix[i][j]);
+                        //console.log("filled coordinates x,y : "+j+","+i+" with value "+matrix[i][j]);
                     }
                 }
-                //we then have the second step (cost propagation)
-                for (var i=1;i<div_amount+1;i++) for (var j=1;j<div_amount+1;j++) {
-                    matrix[i][j] = Math.min(matrix[i-1][j]+1, matrix[i][j-1]+1, matrix[i-1][j-1]+matrix[i][j]);
-                    grid_display.propagated[i][j] = matrix[i][j];
-                    //console.log("cost after propagation in x:"+j+", y:"+i+" : "+matrix[i][j]);
-                }
                 //we now have the full matrix for both groups of a hundred arrays, we can make out the best path and do the recursion
-                /**@type {Array.<number[]>}*/
+                /**@type {multi_scale_cell[]}*/
                 let path = new Array();
-                let x = div_amount; //the x and y coordinates to go through the matrix we just made (x for lvl2array2 and y for lvl2array1)
-                let y = div_amount; //we need to lower them by 1 to access the lvl 2 arrays are they're 100 blocks long compared to the 101*101 matrix
+                let x = div_amount_x; //the x and y coordinates to go through the matrix we just made (x for lvl2array2 and y for lvl2array1)
+                let y = div_amount_y; //we need to lower them by 1 to access the lvl 2 arrays are they're 100 blocks long compared to the 101*101 matrix
                 while (x>0 && y>0) { //while we haven't reached the top left corner
                     if (x==1) { //automatic up
-                        path.push([x-1,y-1]);
+                        if (y==1) {
+                            path.push({x_coord: x, y_coord: y-1, bottom_left: true});
+                            path.push({x_coord: x-1, y_coord: y, top_right: true});
+                        }
+                        path.push({x_coord: x-1, y_coord: y-1});
                         y-=1; //we go up
                     }
                     else if (y==1) { //automatic left
-                        path.push([x-1,y-1]);
+                        path.push({x_coord: x-1, y_coord: y-1});
                         x-=1; //we go left
                     }
                     else {
-                        path.push([x-1,y-1]);
+                        path.push({x_coord: x-1, y_coord: y-1});
                         if (x==1 && y==1) continue;
                         let left_value = matrix[y][x-1];
                         let top_value = matrix[y-1][x];
                         let diagonal_value = matrix[y-1][x-1];   
                         if (diagonal_value <= top_value) { //diagonal <= top
                             if (diagonal_value <= left_value) { //diagonal <= top && diagonal <= left
-                                path.push([x,y-1]);
-                                path.push([x-1,y]);
+                                if (x!=div_amount_x && y!=div_amount_y) {
+                                    path.push({x_coord: x, y_coord: y-1, bottom_left: true});
+                                    path.push({x_coord: x-1, y_coord: y, top_right: true});
+                                }
                                 x-=1;
                                 y-=1; //we go in diagonal;
                             }
@@ -581,15 +612,17 @@
                 // first we have to make an array to simplify absolute coordinates calculation
                 let min_max_per_block = new Array(lvl2array2.length);
                 min_max_per_block[0] = [0, lvl2array2[0].length-1];
-                for (var i=1;i<lvl2array2.length;i++) min_max_per_block[i] = [min_max_per_block[i-1][0] + lvl2array2[i].length, min_max_per_block[i-1][1] + lvl2array2[i].length];
+                for (var i=1;i<lvl2array2.length;i++) min_max_per_block[i] = [min_max_per_block[i-1][1] + 1, min_max_per_block[i-1][1] + lvl2array2[i].length];
                 let absolute_y_per_block = new Array(lvl2array1.length);
                 absolute_y_per_block[0] = [0, lvl2array1[0].length-1];
-                for (var i=1;i<lvl2array1.length;i++) absolute_y_per_block[i] = [absolute_y_per_block[i-1][0] + lvl2array1[i].length, absolute_y_per_block[i-1][1] + lvl2array1[i].length];
+                for (var i=1;i<lvl2array1.length;i++) absolute_y_per_block[i] = [absolute_y_per_block[i-1][1] + 1, absolute_y_per_block[i-1][1] + lvl2array1[i].length];
                 for (var coords of path) {
-                    for (var y = absolute_y_per_block[coords[1]][0]; y <= absolute_y_per_block[coords[1]][1]; y++) {
-                        dict.min_max[y].min = Math.min(dict.min_max[y].min, min_max_per_block[coords[0]][0]);
-                        dict.min_max[y].max = Math.max(dict.min_max[y].max, min_max_per_block[coords[0]][1]);
+                    for (var i = absolute_y_per_block[coords.y_coord][0]; i <= absolute_y_per_block[coords.y_coord][1]; i++) {
+                        dict.min_max[i].min = Math.min(dict.min_max[i].min, min_max_per_block[coords.x_coord][0]);
+                        dict.min_max[i].max = Math.max(dict.min_max[i].max, min_max_per_block[coords.x_coord][1]);
+                        //console.log(i+" row min_max updated with "+dict.min_max[i].min+" - "+dict.min_max[i].max);
                     }
+                    //console.log("at coords "+[...coords]+" : y from "+absolute_y_per_block[coords.y_coord][0]+" to "+absolute_y_per_block[coords.y_coord][1]+" and x from "+min_max_per_block[coords.x_coord][0]+" to "+min_max_per_block[coords.x_coord][1]);
                 }
 
             }
@@ -604,11 +637,14 @@
         */
         function calculate_and_propagate(text_array1, text_array2, dict, alignment_options) {
             for (var y=0;y<dict.min_max.length;y++) { //for every line of the matrix
+                //console.log("check min_max : "+dict.min_max[y].min+" - "+dict.min_max[y].max);
+                //if (dict.min_max[y].min = Infinity) dict.min_max[y] = {min: 0, max: text_array2.length - 1};
                 for (var x = dict.min_max[y].min ; x <= dict.min_max[y].max ; x++) { //only in the existing cells
+                    //console.log("cell "+y+" "+x)
                     //min(cost on the left + 1, cost on the right + 1, cost on the diagonal + 2 * current cost)
                     let left = (x==0) ? y+2 : (x==dict.min_max[y].min) ?  Infinity : dict[dkey(x-1,y)]+1;
                     let top  = (y==0) ? x+2 : (x>dict.min_max[y-1].max) ? Infinity : dict[dkey(x,y-1)]+1;
-                    let diagonal = (y==0 && x==0) ? 0 : (y==0) ? x+1 : (x==0) ? y+1 : (x-1 > dict.min_max[y-1].max || x-1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1,y-1)]+(2*score(text_array1[i],text_array2[j],{typecase:((alignment_options.typecase) ? 0 : 0.1), diacritics:((alignment_options.diacritics) ? 0 : 0.2)}));
+                    let diagonal = (y==0 && x==0) ? 0 : (y==0) ? x+1 : (x==0) ? y+1 : (x-1 > dict.min_max[y-1].max || x-1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1,y-1)]+2*(score(text_array1[y],text_array2[x],{typecase:((alignment_options.typecase) ? 0 : 0.1), diacritics:((alignment_options.diacritics) ? 0 : 0.2)}));
                     dict[dkey(x,y)] = Math.min(left,top,diagonal);
                 }
             }
@@ -651,15 +687,16 @@
                 cost_dict.min_max[i].min = Infinity;
                 cost_dict.min_max[i].max = -Infinity;
             }
-            align(text_array1, text_array2, 0, 0, cost_dict,5000,100, alignment_options); //splits the texts into words and aligns them
+            //align(text_array1, text_array2, 0, 0, cost_dict,5000,100, alignment_options); //splits the texts into words and aligns them
+            make_dict_boundaries(text_array1, text_array2, cost_dict, 50, 160000);
             if (start_time!=null) {
-                console.log("time taken to make the dict : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
+                console.log("time taken to make the dict boundaries : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
                 dict_time = Date.now();
             }
-            //now we have the dict with costs between 0 and 1, we need to propagate before returning it
-            cost_dict = propagate(cost_dict);
+            calculate_and_propagate(text_array1, text_array2, cost_dict, alignment_options);
+            //cost_dict = propagate(cost_dict);
             if (start_time!=null) {
-                console.log("time taken to propagate : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
+                console.log("time taken to calculate & propagate : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
             }
             //we now have the full propagated cost dictionary with min and max values for each line, allowing us to skip past empty blocks
             return cost_dict;
@@ -1149,6 +1186,7 @@
             /** @type {alignmentOptions} */
             var alignment_options = {
                 typecase: false,
+                diacritics: false,
                 punct: true
             };
             document.querySelector("#punct_check").addEventListener("change", (event) => {

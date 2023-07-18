@@ -1,5 +1,3 @@
-repenser le multi-échelle pour le bottleneck preventing (fonction auxilliaire topright et bottomleft ?) pour ne pas se retrouver avec des problèmes de min/max
-solution pour l'instant (à tester) : refonte de align+propagate en évitant la récursion
 refaire la fusion de blocs ? (pas dingue si on veut pouvoir se faire souligner simultanément les mots parallèles)
 ajouter fonctionnalités de comparaison supplémentaires
 ajouter fonctionnalités de téléchargement de l'outil et d'import/export de résultats
@@ -9,9 +7,7 @@ ajouter défilement vertical automatique entre blocs similaires / soulignement p
 optimisation de TOUT
 complexités pour l'instant (n la taille du texte 1 et m la taille du texte 2 en mots):
     - create_dict :             n * créer la cellule de min_max + appel des 2 fonctions suivantes (en gros n * m * une constante)
-    - make_dict_boundaries :    (n/min_block_size)*(m/min_block_size) * complexité de MinHash sur 2 sets de taille min_block_size
-                                encore une fois pour propagation (donc min entre 3 trucs + des additions)
-                                    on pourrait fusionner coût et propagation
+    - make_dict_boundaries :    (n/min_block_size)*(m/min_block_size) * complexité de MinHash sur 2 sets de taille min_block_size + propagation
                                 pathmaking basique dans une matrice (n/min_block_size)*(m/min_block_size)
                                 boucle dans le parcours et création de 2 arrays pour les min & max
     - calculate_and_propagate : n*m * le temps nécessaire pour faire le score d'une case + choper les trois autres cases et faire la comparaison
