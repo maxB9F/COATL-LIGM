@@ -377,36 +377,6 @@
         }
 
         /**
-         * Returns the length of the shortest path in a Levenshtein distance matrix of words (recursive).
-         * @param {matrix} matrix
-         * @param {number} x - The x-coordinate at which you enter the matrix
-         * @param {number} y - The y-coordinate at which you enter the matrix
-         * @param {string[]} array_x - The array of words corresponding to the x coordinate
-         * @param {string[]} array_y - The array of words corresponding to the y coordinate
-         * @returns {number}
-        */
-        function shortest_path(matrix, x, y, array_x, array_y) {
-            if (x == 0) return y;
-            if (y == 0) return x;
-            let left = matrix[y][x-1];
-            let top = matrix[y-1][x];
-            let diag = matrix[y-1][x];
-            if (left < diag) {
-                if (top < left) return 1 + shortest_path(matrix, x, y-1, array_x, array_y);
-                if (left < top) return 1 + shortest_path(matrix, x-1, y, array_x, array_y);
-                return 1 + Math.min(shortest_path(matrix, x, y-1, array_x, array_y), shortest_path(matrix, x-1, y, array_x, array_y));
-            }
-            if (top < diag) return 1 + shortest_path(matrix, x, y-1, array_x, array_y);
-            if (array_x[x-1] == array_y[y-1]) return shortest_path(matrix, x-1, y-1, array_x, array_y);
-            if (diag == top) {
-                if (diag == left) return Math.min(1 + shortest_path(matrix, x, y-1, array_x, array_y), 1 + shortest_path(matrix, x-1, y, array_x, array_y), 2 + shortest_path(matrix, x-1, y-1, array_x, array_y));
-                return Math.min(1 + shortest_path(matrix, x, y-1, array_x, array_y), 2 + shortest_path(matrix, x-1, y-1, array_x, array_y));
-            }
-            if (diag == left) return Math.min(1 + shortest_path(matrix, x-1, y, array_x, array_y), 2 + shortest_path(matrix, x-1, y-1, array_x, array_y));
-            return 2 + shortest_path(matrix, x-1, y-1, array_x, array_y);
-        }
-
-        /**
          * Return a value between b and a for the similarity between two strings (considered words) using Levenshtein distance.
          * @param {number} a
          * @param {number} b
@@ -421,10 +391,13 @@
             let matrix = new Array(word1_array.length+1);
             for (var i = 0; i < word1_array.length + 1; i++) {
                 matrix[i] = new Array(word2_array.length+1);
-                for (var j = 0; j < word2_array.length + 1; j++) matrix[i][j] = (i == 0) ? j : (j == 0) ? i : (word1_array[i-1] == word2_array[j-1]) ? 0 : 1;
+                for (var j = 0; j < word2_array.length + 1; j++) {
+                    if (j==0) matrix[i][0] = i;
+                    else if (i==0) matrix[0][j] = j;
+                    else matrix[i][j] = Math.max(matrix[i][j-1] + 1, matrix[i-1][j] + 1, (2 * ((word1_array[i-1] == word2_array[j-1]) ? 0 : 1)) + matrix[i-1][j-1]);
+                } 
             }
-            for (var i = 1; i < word1_array.length + 1; i++) for (var j = 1; j < word2_array.length + 1; j++) matrix[i][j] = Math.max(matrix[i][j-1] + 1, matrix[i-1][j] + 1, (2 * matrix[i][j]) + matrix[i-1][j-1]);
-            let result = shortest_path(matrix, word2_array.length, word1_array.length, word2_array, word1_array);
+            let result = matrix[word1.length+1][word2.length+1];
             let len_long = Math.max(word1_array.length, word2_array.length);
             let len_short = Math.min(word1_array.length, word2_array.length);
             let return_value = (result > len_short) ? 1 : (a - b) * (result / len_short) + b;
