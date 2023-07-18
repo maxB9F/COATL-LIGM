@@ -394,11 +394,10 @@
                 for (var j = 0; j < word2_array.length + 1; j++) {
                     if (j==0) matrix[i][0] = i;
                     else if (i==0) matrix[0][j] = j;
-                    else matrix[i][j] = Math.max(matrix[i][j-1] + 1, matrix[i-1][j] + 1, (2 * ((word1_array[i-1] == word2_array[j-1]) ? 0 : 1)) + matrix[i-1][j-1]);
+                    else matrix[i][j] = Math.min(matrix[i][j-1] + 1, matrix[i-1][j] + 1, ((word1_array[i-1] == word2_array[j-1]) ? 0 : 2) + matrix[i-1][j-1]);
                 } 
             }
             let result = matrix[word1_array.length][word2_array.length];
-            let len_long = Math.max(word1_array.length, word2_array.length);
             let len_short = Math.min(word1_array.length, word2_array.length);
             let return_value = (result > len_short) ? 1 : (a - b) * (result / len_short) + b;
             return return_value;
