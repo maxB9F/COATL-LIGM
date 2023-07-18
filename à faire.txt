@@ -2,7 +2,6 @@ refaire la fusion de blocs ? (pas dingue si on veut pouvoir se faire souligner s
 ajouter fonctionnalités de comparaison supplémentaires
 ajouter fonctionnalités de téléchargement de l'outil et d'import/export de résultats
 ajouter version en Anglais (britannique de préférence)
-ajouter défilement vertical automatique entre blocs similaires / soulignement parallèle
 
 optimisation de TOUT
 complexités pour l'instant (n la taille du texte 1 et m la taille du texte 2 en mots):

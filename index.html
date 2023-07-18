@@ -688,7 +688,7 @@
                 cost_dict.min_max[i].max = -Infinity;
             }
             //align(text_array1, text_array2, 0, 0, cost_dict,5000,100, alignment_options); //splits the texts into words and aligns them
-            make_dict_boundaries(text_array1, text_array2, cost_dict, 50, 160000);
+            make_dict_boundaries(text_array1, text_array2, cost_dict, 100, 90000);
             if (start_time!=null) {
                 console.log("time taken to make the dict boundaries : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
                 dict_time = Date.now();
