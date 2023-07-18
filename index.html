@@ -571,6 +571,12 @@
                 let diagonal_value = (dkey(x-1, y-1) in dict) ? dict[dkey(x-1, y-1)] : null;
                 let left_value = (dkey(x-1, y) in dict) ? dict[dkey(x-1, y)] : null;
                 let top_value = (dkey(x, y-1) in dict) ?  dict[dkey(x, y-1)] : null;
+                if (left_value==null && top_value==null) {
+                    result_array.push({label: score(text_array1[y], text_array2[x], score_options), left: text_array1[y], right: text_array2[x]});
+                    x--;
+                    y--;
+                    continue;
+                }
                 if (left_value == null) {
                     result_array.push({label: 2, left: text_array1[y], right: ""});
                     y--;
