@@ -144,10 +144,6 @@
             background-color: darkviolet;
         }
 
-        .changed:hover, .unchanged:hover {
-            text-decoration: solid underline;
-        }
-
         .removed, #left_panel > .non_corresponding {
             color: white;
             background-color: red;
@@ -726,6 +722,14 @@
             document.querySelectorAll(".unchanged, .changed").forEach(element => {
                 var id = element.id.split('_')[1];
                 element.addEventListener("click", function() {scroll_to_id(id);});
+                element.addEventListener("mouseenter", function() {
+                    document.getElementById("l_"+id).style.textDecoration = "solid underline";
+                    document.getElementById("r_"+id).style.textDecoration = "solid underline";
+                });
+                element.addEventListener("mouseleave", function() {
+                    document.getElementById("l_"+id).style.textDecoration = "none";
+                    document.getElementById("r_"+id).style.textDecoration = "none";
+                });
             });
         }
 
