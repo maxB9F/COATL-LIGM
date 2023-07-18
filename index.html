@@ -143,6 +143,10 @@
             background-color: darkviolet;
         }
 
+        .changed:hover, .unchanged:hover {
+            text-decoration: solid underline;
+        }
+
         .removed, #left_panel > .non_corresponding {
             color: white;
             background-color: red;
@@ -708,6 +712,26 @@
             document.querySelectorAll(".panel").forEach(element => {
                 element.style.display = "block";
             });
+        }
+
+        /**
+         * Function tied to a span, clicking on this span scrolls it and its 'parallel' span in the middle of the display panels.
+         * @param {string} block_id - The id of the span, with format [1-9][0-9]*
+        */
+        function scroll_to_id(block_id) {
+            let offsetHeight = document.querySelector("#left_panel").clientHeight / 2;
+            document.querySelector("#left_panel").scrollTop = document.querySelector("#l_"+block_id).offsetTop - offsetHeight;
+            document.querySelector("#right_panel").scrollTop = document.querySelector("#r_"+block_id).offsetTop - offsetHeight;
+        }
+
+        /**
+         * Adds the "click" event listener to call the scroll_to_id function on the spans.
+         * @param {Element} span
+        */
+        function add_scroller_listener(span) {
+            if (span.classList.includes("removed") || span.classList.includes("added") || span.classList.includes("punct") || span.classList.includes("non_corresponding")) return;
+            var id_array = span.id.split('_');
+            span.addEventListener("click", function() {scroll_to_id(id_array[1]);});
         }
 
         document.addEventListener("DOMContentLoaded", function(){
