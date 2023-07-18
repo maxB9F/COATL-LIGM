@@ -667,6 +667,26 @@
         }
 
         /**
+         * Function tied to a span, clicking on this span scrolls it and its 'parallel' span in the middle of the display panels.
+         * @param {string} block_id - The id of the span, with format [1-9][0-9]*
+        */
+        function scroll_to_id(block_id) {
+            let offsetHeight = document.querySelector("#left_panel").clientHeight / 2;
+            document.querySelector("#left_panel").scrollTop = document.querySelector("#l_"+block_id).offsetTop - offsetHeight;
+            document.querySelector("#right_panel").scrollTop = document.querySelector("#r_"+block_id).offsetTop - offsetHeight;
+        }
+
+        /**
+         * Adds the "click" event listener to call the scroll_to_id function on the spans.
+         * @param {Element} span
+        */
+        function add_scroller_listener(span) {
+            if (span.classList.includes("removed") || span.classList.includes("added") || span.classList.includes("punct") || span.classList.includes("non_corresponding")) return;
+            var id_array = span.id.split('_');
+            span.addEventListener("click", function() {scroll_to_id(id_array[1]);});
+        }
+
+        /**
          * Creates spans in the result display panels.
          * @param {wordblock[]} text_array - The path
         */
@@ -681,6 +701,7 @@
                     new_span_left.id = "l_" + span_id;
                     new_span_left.textContent = block.left;
                     document.getElementById("left_panel").appendChild(new_span_left);
+                    if (block.label < 2) add_scroller_listener(new_span_left);
                 }
                 if (block.label != 2) {
                     let new_span_right = document.createElement("span");
@@ -688,6 +709,7 @@
                     new_span_right.id = "r_" + span_id;
                     new_span_right.textContent = block.right;
                     document.getElementById("right_panel").appendChild(new_span_right);
+                    if (block.label < 2) add_scroller_listener(new_span_right);
                 }
             }
         }
@@ -712,26 +734,6 @@
             document.querySelectorAll(".panel").forEach(element => {
                 element.style.display = "block";
             });
-        }
-
-        /**
-         * Function tied to a span, clicking on this span scrolls it and its 'parallel' span in the middle of the display panels.
-         * @param {string} block_id - The id of the span, with format [1-9][0-9]*
-        */
-        function scroll_to_id(block_id) {
-            let offsetHeight = document.querySelector("#left_panel").clientHeight / 2;
-            document.querySelector("#left_panel").scrollTop = document.querySelector("#l_"+block_id).offsetTop - offsetHeight;
-            document.querySelector("#right_panel").scrollTop = document.querySelector("#r_"+block_id).offsetTop - offsetHeight;
-        }
-
-        /**
-         * Adds the "click" event listener to call the scroll_to_id function on the spans.
-         * @param {Element} span
-        */
-        function add_scroller_listener(span) {
-            if (span.classList.includes("removed") || span.classList.includes("added") || span.classList.includes("punct") || span.classList.includes("non_corresponding")) return;
-            var id_array = span.id.split('_');
-            span.addEventListener("click", function() {scroll_to_id(id_array[1]);});
         }
 
         document.addEventListener("DOMContentLoaded", function(){
@@ -769,7 +771,6 @@
                 path_ta = alt_bring_text_back(path_ta, left_text, right_text, alignment_options);
                 make_spans(path_ta);
                 change_to_result_screen();
-                document.querySelectorAll(".text_part").forEach(element => {add_scroller_listener(element);});
             });
         });
     </script>
