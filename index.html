@@ -131,6 +131,7 @@
             height: auto;
             width: auto;
             overflow-wrap: break-word;
+            scroll-behavior: smooth;
         }
 
         .text_part {
@@ -687,19 +688,17 @@
                 let classes = int_to_type(block.label).split(" ");
                 if (block.label != 3) {
                     let new_span_left = document.createElement("span");
-                    new_span_left.classList.add("text_part", classes);
+                    new_span_left.classList.add("text_part", ...classes);
                     new_span_left.id = "l_" + span_id;
                     new_span_left.textContent = block.left;
                     document.getElementById("left_panel").appendChild(new_span_left);
-                    if (block.label < 2) new_span_left.addEventListener("click", function() {scroll_to_id(span_id)});
                 }
                 if (block.label != 2) {
                     let new_span_right = document.createElement("span");
-                    new_span_right.classList.add("text_part", classes);
+                    new_span_right.classList.add("text_part", ...classes);
                     new_span_right.id = "r_" + span_id;
                     new_span_right.textContent = block.right;
                     document.getElementById("right_panel").appendChild(new_span_right);
-                    if (block.label < 2) new_span_right.addEventListener("click", function() {scroll_to_id(span_id)});
                 }
             }
         }
@@ -723,6 +722,10 @@
         function change_to_result_screen() {
             document.querySelectorAll(".panel").forEach(element => {
                 element.style.display = "block";
+            });
+            document.querySelectorAll(".unchanged, .changed").forEach(element => {
+                var id = element.id.split('_')[1];
+                element.addEventListener("click", function() {scroll_to_id(id);});
             });
         }
 
