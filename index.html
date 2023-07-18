@@ -321,7 +321,14 @@
          * @property {number} typecase - The score added to words that are the same after typecase normalisation
          * @property {number[]} scale - The scale for the Levenshtein score function. 
         */
-
+        /**
+         * A cell on the path of the make_dict_boundaries function.
+         * @typedef {object} multi_scale_cell
+         * @property {number} x_coord
+         * @property {number} y_coord
+         * @property {boolean} top_right
+         * @property {boolean} bottom_left
+        */
         var left_panel = document.getElementById("left_panel");
         var right_panel = document.getElementById("right_panel");
         
@@ -418,52 +425,66 @@
         }
 
         /**
-         * Aligns two text arrays and puts the scores in a dict without propagation (recursive).
+         * Divides the matrix in blocks and sets their boundaries as min and max for every line of the dict.
          * @param {string[]} text_array1 - The full word array of text 1
          * @param {string[]} text_array2 - The full word array of text 2
-         * @param {number} absolute_x - (for recursion) The starting x coordinate of the current call, set to 0 when calling externally
-         * @param {number} absolute_y - (for recursion) The starting y coordinate of the current call, set to 0 when calling externally
-         * @param {dict} dict - The dict to be filled
-         * @param {number} min_div_size - The minimum word array size at which the recursion happens
-         * @param {number} div_amount - The number of parts a word array should be divided in for recursion
-         * @param {alignmentOptions} alignment_options
+         * @param {dict} dict - The dict to be modified
+         * @param {number} min_block_size - The size of the blocks
+         * @param {number} max_matrix_size - The max size of the matrix (in number of cells)
         */
-        function align(text_array1, text_array2, absolute_x, absolute_y,dict,min_div_size,div_amount, alignment_options) {
-            if (text_array1.length>min_div_size && text_array2.length>min_div_size) {
-                let lvl2array1 = new Array(div_amount);
-                let lvl2array2 = new Array(div_amount);
-                let block_size_1 = text_array1.length/div_amount;
-                let block_size_2 = text_array2.length/div_amount;
-                for (var j = 0; j < div_amount; j++) {
-                    lvl2array1[j] = text_array1.slice(Math.floor(j * block_size_1), Math.floor((j + 1) * block_size_1));
-                    lvl2array2[j] = text_array2.slice(Math.floor(j * block_size_2), Math.floor((j + 1) * block_size_2));
-                }
+        function make_dict_boundaries(text_array1, text_array2, dict, min_block_size, max_matrix_size) {
+            let div_amount_x = Math.floor(text_array2.length / min_block_size);
+            let div_amount_y = Math.floor(text_array1.length / min_block_size);
+            if (div_amount_x * div_amount_y > max_matrix_size) {
+                div_amount_x = Math.floor(Math.sqrt(max_matrix_size));
+                div_amount_y = Math.floor(Math.sqrt(max_matrix_size));
+            }
+            if (div_amount_x > 2 && div_amount_y > 2) {
+                let lvl2array1 = new Array(div_amount_y);
+                let lvl2array2 = new Array(div_amount_x);
+                let block_size_1 = text_array1.length / div_amount_y;
+                let block_size_2 = text_array2.length / div_amount_x;
+                for (var j = 0; j < div_amount_x; j++) lvl2array2[j] = text_array2.slice(Math.floor(j * block_size_2), Math.floor((j+1) * block_size_2));
+                for (var j = 0; j < div_amount_y; j++) lvl2array1[j] = text_array1.slice(Math.floor(j * block_size_1), Math.floor((j+1) * block_size_1));
                 /** @type {matrix} */
-                let matrix = new Array(div_amount + 1);
-                for (var i = 0; i < div_amount + 1; i++) {
-                    matrix[i] = new Array(div_amount + 1);
-                    for (var j = 0; j < div_amount + 1; j++) matrix[i][j] = (j == 0) ? i : (i == 0) ? j : ((i != j) && (matrix[j] != null)) ? matrix[j][i] : jaccard_distance(lvl2array1[i-1], lvl2array2[j-1]);
+                let matrix = new Array(div_amount_y+1);
+                for (var i = 0; i < div_amount_y + 1; i++) {
+                    matrix[i] = new Array(div_amount_x + 1);
+                    matrix[i][0] = i;
                 }
-                for (var i = 1; i < div_amount + 1; i++) for (var j = 1; j < div_amount + 1; j++) matrix[i][j] = Math.min(matrix[i-1][j] + 1, matrix[i][j-1] + 1, matrix[i-1][j-1] + matrix[i][j]);
-                /**@type {Array.<number[]>}*/
+                for (var i = 1; i < div_amount_x + 1; i++) matrix[0][i] = i;
+                for (var i = 1; i < div_amount_y + 1; i++) for (var j = 1; j < div_amount_x + 1; j++) {
+                    matrix[i][j] = ((i != j) && (matrix[j] != null) && (matrix[j][i] != null)) ? matrix[j][i] : jaccard_distance(lvl2array1[i-1], lvl2array2[j-1]);
+                    matrix[i][j] = Math.min(matrix[i-1][j] + 1, matrix[i][j-1] + 1, matrix[i-1][j-1] + matrix[i][j]);
+                }
+                /**@type {multi_scale_cell[]}*/
                 let path = new Array();
-                let x = div_amount;
-                let y = div_amount;
+                let x = div_amount_x;
+                let y = div_amount_y;
                 while (x > 0 && y > 0) {
                     if (x == 1) {
-                        path.push([x-1, y-1]);
+                        if (y == 1) {
+                            path.push({x_coord: x, y_coord: y-1, bottom_left: true});
+                            path.push({x_coord: x-1, y_coord: y, top_right: true});
+                        }
+                        path.push({x_coord: x-1, y_coord: y-1});
                         y--;
-                    } else if (y == 1) {
-                        path.push([x-1, y-1]);
+                    }
+                    else if (y == 1) {
+                        path.push({x_coord: x-1, y_coord: y-1});
                         x--;
-                    } else {
-                        path.push([x-1, y-1]);
-                        if (x == 1 && y == 1) continue;
+                    }
+                    else {
+                        path.push({x_coord: x-1, y_coord: y-1});
                         let left_value = matrix[y][x-1];
                         let top_value = matrix[y-1][x];
                         let diagonal_value = matrix[y-1][x-1];   
                         if (diagonal_value <= top_value) {
                             if (diagonal_value <= left_value) {
+                                if (x != div_amount_x && y != div_amount_y) {
+                                    path.push({x_coord: x, y_coord: y-1, bottom_left: true});
+                                    path.push({x_coord: x-1, y_coord: y, top_right: true});
+                                }
                                 x--;
                                 y--;
                             }
@@ -473,49 +494,34 @@
                         else y--;
                     }
                 }
-                x = -1;
-                y = -1;
-                let x_for_align = absolute_x + text_array2.length - lvl2array2[div_amount-1].length;
-                let y_for_align = absolute_y + text_array1.length - lvl2array1[div_amount-1].length;
-                for (var coords of path) {
-                    if (coords[0] == x) y_for_align -= lvl2array1[coords[1]].length;
-                    else if (coords[1]==y) x_for_align -= lvl2array2[coords[0]].length;
-                    else if (x >= 0 && y >= 0) {
-                        let next_x_for_align = x_for_align - lvl2array2[coords[0]].length;
-                        let next_y_for_align = y_for_align - lvl2array1[coords[1]].length;
-                        align(lvl2array1[y], lvl2array2[coords[0]], next_x_for_align, y_for_align, dict, min_div_size, div_amount, alignment_options);
-                        align(lvl2array1[coords[1]], lvl2array2[x], x_for_align, next_y_for_align, dict, min_div_size, div_amount, alignment_options);
-                        x_for_align = next_x_for_align;
-                        y_for_align = next_y_for_align;
-                    }
-                    x = coords[0];
-                    y = coords[1];
-                    align(lvl2array1[y], lvl2array2[x], x_for_align, y_for_align, dict, min_div_size, div_amount, alignment_options);
+                let min_max_per_block = new Array(lvl2array2.length);
+                min_max_per_block[0] = [0, lvl2array2[0].length - 1];
+                for (var i = 1; i < lvl2array2.length; i++) min_max_per_block[i] = [min_max_per_block[i-1][1] + 1, min_max_per_block[i-1][1] + lvl2array2[i].length];
+                let absolute_y_per_block = new Array(lvl2array1.length);
+                absolute_y_per_block[0] = [0, lvl2array1[0].length - 1];
+                for (var i = 1; i < lvl2array1.length; i++) absolute_y_per_block[i] = [absolute_y_per_block[i-1][1] + 1, absolute_y_per_block[i-1][1] + lvl2array1[i].length];
+                for (var coords of path) for (var i = absolute_y_per_block[coords.y_coord][0]; i <= absolute_y_per_block[coords.y_coord][1]; i++) {
+                    dict.min_max[i].min = Math.min(dict.min_max[i].min, min_max_per_block[coords.x_coord][0]);
+                    dict.min_max[i].max = Math.max(dict.min_max[i].max, min_max_per_block[coords.x_coord][1]);
                 }
-            } else {
-                for (var i = 0; i < text_array1.length; i++) {
-                    dict.min_max[absolute_y + i].min = Math.min(dict.min_max[absolute_y + i].min, absolute_x);
-                    dict.min_max[absolute_y + i].max = Math.max(dict.min_max[absolute_y + i].max, absolute_x + text_array2.length - 1);
-                    for (var j = 0; j < text_array2.length; j++) dict[dkey(absolute_x + j, absolute_y + i)] = score(text_array1[i], text_array2[j], {typecase: ((alignment_options.typecase) ? 0 : 0.1)});
-                }
+
             }
         }
 
         /**
-         * Propagates the scores in a unpropagated Levenshtein distance matrix
-         * @param {Object} dict - The matrix
-         * @param {Object[]} dict.min_max - The array of minimal and maximal row index of each row (to avoid going through each and every absent cell), each one has a max and a min value
-         * @param {number} dict.[dkey(x,y)] - The score in the cell with coords x and y
-         * @returns {dict}
+         * Calculates the Levenshtein distance matrix in a dict.
+         * @param {string[]} text_array1 - The full word array of text 1 (y axis)
+         * @param {string[]} text_array2 - The full word array of text 2 (x axis)
+         * @param {dict} dict - The dict needs to have its min_max array already filled
+         * @param {alignmentOptions} alignment_options
         */
-        function propagate(dict) {
+        function calculate_and_propagate(text_array1, text_array2, dict, alignment_options) {
             for (var y = 0; y < dict.min_max.length; y++) for (var x = dict.min_max[y].min; x <= dict.min_max[y].max; x++) {
                 let left = (x == 0) ? y + 2 : (x == dict.min_max[y].min) ?  Infinity : dict[dkey(x-1, y)] + 1;
                 let top  = (y == 0) ? x + 2 : (x > dict.min_max[y-1].max) ? Infinity : dict[dkey(x, y-1)] + 1;
-                let diagonal = (y == 0 && x == 0) ? 0 : (y == 0) ? x + 1 : (x == 0) ? y + 1 : (x - 1 > dict.min_max[y-1].max || x - 1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1, y-1)] + (2 * dict[dkey(x, y)]);
-                dict[dkey(x, y)] = Math.min(left, top, diagonal);
+                let diagonal = (y == 0 && x == 0) ? 0 : (y == 0) ? x + 1 : (x == 0) ? y + 1 : (x - 1 > dict.min_max[y-1].max || x - 1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1, y-1)] + 2 * (score(text_array1[y], text_array2[x], {typecase: ((alignment_options.typecase) ? 0 : 0.1), diacritics: ((alignment_options.diacritics) ? 0 : 0.2)}));
+                dict[dkey(x, y)] = Math.min(left,top,diagonal);
             }
-            return dict;
         }
 
         /**
@@ -528,8 +534,9 @@
         function create_dict (text_array1, text_array2, alignment_options) {
             var cost_dict = {min_max: new Array(text_array1.length)};
             for (var i = 0; i < text_array1.length; i++) cost_dict.min_max[i] = {min: Infinity, max: -Infinity};
-            align(text_array1, text_array2, 0, 0, cost_dict, 5000, 100, alignment_options);
-            return propagate(cost_dict);
+            make_dict_boundaries(text_array1, text_array2, cost_dict, 50, 160000);
+            calculate_and_propagate(text_array1, text_array2, cost_dict, alignment_options);
+            return cost_dict;
         }
 
         /**
