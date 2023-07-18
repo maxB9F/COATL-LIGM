@@ -319,6 +319,7 @@
          * Options pertaining to the score of two blocks.
          * @typedef {Object} scoreOptions - Leave out the parameters that shouldn't be calculated (or set to null)
          * @property {number} typecase - The score added to words that are the same after typecase normalisation
+         * @property {number} diacritics - The score added to words that are the same after diacritics normalisation
          * @property {number[]} scale - The scale for the Levenshtein score function. 
         */
         /**
@@ -420,6 +421,11 @@
         function score(word1, word2, options) {
             if (word1 == word2) return 0;
             if ((("typecase" in options) && (options.typecase != null)) && (word1.toLowerCase() == word2.toLowerCase())) return options.typecase;
+            if (("diacritics" in options) && (options.diacritics != null)) {
+                if (word1.normalize("NFD") == word2.normalize("NFD")) return options.diacritics;
+                if ((("typecase" in options) && (options.typecase != null)) && (word1.toLowerCase().normalize("NFD") == word2.toLowerCase().normalize("NFD"))) return options.typecase + options.diacritics;
+                //normalisation NKFD normalise également les ligatures et formes anciennes de lettres (s long par ex.), à considérer
+            }
             if (("scale" in options) && (options.scale != null)) return levenshtein_score(options.scale[1], options.scale[0], word1.toLowerCase(), word2.toLowerCase());
             return 1;
         }
@@ -551,7 +557,7 @@
             let result_array = new Array();
             let x = text_array2.length - 1;
             let y = text_array1.length - 1;
-            let score_options = {typecase: ((alignment_options.typecase) ? 0 : 0.1), scale: [0, 0.9]};
+            let score_options = {typecase: ((alignment_options.typecase) ? 0 : 0.1), diacritics:((alignment_options.diacritics) ? 0 : 0.2), scale: [0, 0.9]};
             while (x >= -1 && y >= -1) {
                 if (x <= -1) {
                     if (y <= -1) break;
@@ -644,6 +650,8 @@
             if (typeint==3) return "added";
             if (typeint==4) return "punct";
             if (typeint==0.1) return "changed typecase";
+            if (typeint==0.2) return "changed diacritics";
+            if (typeint==0.3) return "changed typecase diacritics";
             if (typeint==1) return "non_corresponding"
             return "changed";
         }
@@ -700,6 +708,7 @@
             /** @type {alignmentOptions} */
             var alignment_options = {
                 typecase: false,
+                diacritics: false,
                 punct: true
             };
             document.querySelector("#punct_check").addEventListener("change", (event) => {
@@ -709,6 +718,10 @@
             document.querySelector("#typecase_check").addEventListener("change", (event) => {
                 if (event.currentTarget.checked) alignment_options.typecase = true;
                 else alignment_options.typecase = false;
+            });
+            document.querySelector("#diacritics_check").addEventListener("change", (event) => {
+                if (event.currentTarget.checked) alignment_options.diacritics = true;
+                else alignment_options.diacritics = false;
             });
             document.querySelectorAll(".panel").forEach(element => {element.style.display = "none";});
             document.querySelector("#align_button").addEventListener("click",function(){
@@ -762,6 +775,10 @@
             <div class="checkbox_container">
                 <input type="checkbox" id="typecase_check">
                 <label for="typecase_check">Ignorer les différences de casse typographique</label>
+            </div>
+            <div class="checkbox_container">
+                <input type="checkbox" id="diacritics_check">
+                <label for="diacritics_check">Ignorer les différences de signes diacritiques</label>
             </div>
             <button id="align_button"  type="button">Align</button>
             <button id="reset_button"  type="button">Reset</button>
