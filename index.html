@@ -769,6 +769,7 @@
                 path_ta = alt_bring_text_back(path_ta, left_text, right_text, alignment_options);
                 make_spans(path_ta);
                 change_to_result_screen();
+                document.querySelectorAll(".text_part").forEach(element => {add_scroller_listener(element);});
             });
         });
     </script>
