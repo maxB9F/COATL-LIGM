@@ -677,16 +677,6 @@
         }
 
         /**
-         * Adds the "click" event listener to call the scroll_to_id function on the spans.
-         * @param {Element} span
-        */
-        function add_scroller_listener(span) {
-            if (span.classList.includes("removed") || span.classList.includes("added") || span.classList.includes("punct") || span.classList.includes("non_corresponding")) return;
-            var id_array = span.id.split('_');
-            span.addEventListener("click", function() {scroll_to_id(id_array[1]);});
-        }
-
-        /**
          * Creates spans in the result display panels.
          * @param {wordblock[]} text_array - The path
         */
@@ -701,7 +691,7 @@
                     new_span_left.id = "l_" + span_id;
                     new_span_left.textContent = block.left;
                     document.getElementById("left_panel").appendChild(new_span_left);
-                    if (block.label < 2) add_scroller_listener(new_span_left);
+                    if (block.label < 2) new_span_left.addEventListener("click", function() {scroll_to_id(span_id)});
                 }
                 if (block.label != 2) {
                     let new_span_right = document.createElement("span");
@@ -709,7 +699,7 @@
                     new_span_right.id = "r_" + span_id;
                     new_span_right.textContent = block.right;
                     document.getElementById("right_panel").appendChild(new_span_right);
-                    if (block.label < 2) add_scroller_listener(new_span_right);
+                    if (block.label < 2) new_span_right.addEventListener("click", function() {scroll_to_id(span_id)});
                 }
             }
         }
