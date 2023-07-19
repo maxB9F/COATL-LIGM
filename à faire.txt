@@ -1,5 +1,12 @@
 refaire la fusion de blocs ? (pas dingue si on veut pouvoir se faire souligner simultanément les mots parallèles)
 ajouter fonctionnalités de comparaison supplémentaires
+
+lemmatisation / racinisation / autres normalisations :
+    - algo de base de racinisation + article : Carry
+    - POS-tagger en Français et en js : fr-compromise https://github.com/nlp-compromise/fr-compromise
+    - POS-tagger + lemmatiseur + racinisateur + tokeniseur : nlp-js-tools-french https://github.com/bastienbot/nlp-js-tools-french/tree/master
+idée : utiliser un POS-tagger sur l'intégralité des deux textes juste après le multi-scale (complexité linéaire), puis utiliser le tag pour la fonction score ?
+
 ajouter fonctionnalités de téléchargement de l'outil et d'import/export de résultats
 ajouter version en Anglais (britannique de préférence)
 
