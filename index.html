@@ -176,8 +176,9 @@
         /**
          * Options pertaining to the whole alignment algorithm.
          * @typedef {Object} alignmentOptions
-         * @property {boolean} punct - True if punctuation and whitespace should be compared
-         * @property {boolean} typecase - True if typecase differences should be considered
+         * @property {boolean} punct - True if punctuation should be ignored like whitespace is
+         * @property {boolean} typecase - True if typecase differences should be ignored
+         * @property {boolean} diacritics - True if differences in diacritics should be ignored
         */
         /**
          * Options pertaining to the score of two blocks.
@@ -191,6 +192,7 @@
          * @property {number} tense - The score added to words that are the same after grammatical tense normalisation
          * @property {number} root - The score added to words that share the same root (general grammatical normalisation)
          * @property {number} semantics - The score added to words in the same semantic field
+         * @property {boolean} punctuation - True if punctuation is taken into account by the algorithm
          * @property {number[]} scale - The scale for the Levenshtein score function. 
         */
         /**
@@ -221,7 +223,7 @@
          * @returns {string[]}
         */
         function string_to_words(text) {
-            return text.split(/[^\p{Script=Latin}]+/u).filter(block => block.length > 0); //the string is split according to the regular expression
+            return text.split(/[\p{P}|\p{Z}|\p{C}]+/u).filter(block => block.length > 0); //the string is split according to the regular expression
         }
         
         /**
@@ -230,7 +232,25 @@
          * @returns {string[]}
         */
         function string_to_punct(text) {
-            return text.split(/[\p{Script=Latin}]+/u).filter(block => block.length > 0);
+            return text.split(/[^\p{P}]+/u).filter(block => block.length > 0);
+        }
+
+        /**
+         * Returns all the separators from a text (whitespaces etc).
+         * @param {string} text
+         * @returns {string[]}
+        */
+        function string_to_separators(text) {
+            return text.split(/[^\p{Z}|\p{C}]+/u).filter(block => block.length > 0);
+        }
+
+        /**
+         * Returns all the punctuation and separators from a text in a string array.
+         * @param {string} text
+         * @returns {string[]}
+        */
+        function string_to_punct_and_separators(text) {
+            return text.split(/[^\p{P}|\p{Z}|\p{C}]+/u).filter(block => block.length > 0);
         }
 
         /**
@@ -239,7 +259,7 @@
          * @returns {string[]}
         */
         function string_interlace(text) {
-            return text.split(/([^\p{Script=Latin}]+)/u).filter(block => block.length > 0); 
+            return text.replace(/[\p{Z}|\p{C}]+/gu, '').split(/([\p{P}]+)/u).filter(block => block.length > 0); 
         }
 
         /**
@@ -338,11 +358,22 @@
          * @returns {number}
         */
         function score(word1, word2, options) {
+            if (options.punctuation) {
+                if (word1.test(/[\p{P}]+/u)) {
+                    if (word2.test(/[\p{P}]+/u)) {
+                        if (word1==word2) return 0.85; //the same punctuation string
+                        return 0.95; //two different punctuation strings
+                    }
+                    return 1; //one punctuation string and one word
+                }
+                if (word2.test(/[\p{P}]+/u)) return 1; //idem
+            }
             if (word1 == word2) return 0;
             if ((("typecase" in options) && (options.typecase != null)) && (word1.toLowerCase() == word2.toLowerCase())) return options.typecase;
             if (("diacritics" in options) && (options.diacritics != null)) {
-                if (word1.normalize("NFD") == word2.normalize("NFD")) return options.diacritics;
-                if ((("typecase" in options) && (options.typecase != null)) && (word1.toLowerCase().normalize("NFD") == word2.toLowerCase().normalize("NFD"))) return options.typecase + options.diacritics;
+                let diacritics_regex = /[\p{Sk}|\p{Lm}|\p{M}]+/gu;
+                if (word1.normalize("NFD").replace(diacritics_regex,'') == word2.normalize("NFD").replace(diacritics_regex,'')) return options.diacritics;
+                if ((("typecase" in options) && (options.typecase != null)) && (word1.toLowerCase().normalize("NFD").replace(diacritics_regex,'') == word2.toLowerCase().normalize("NFD").replace(diacritics_regex,''))) return options.typecase + options.diacritics;
                 //normalisation NKFD normalise également les ligatures et formes anciennes de lettres (s long par ex.), à considérer
             }
             if (("scale" in options) && (options.scale!=null)) return levenshtein_score(options.scale[1], options.scale[0], word1.toLowerCase(), word2.toLowerCase());
@@ -629,7 +660,7 @@
                     //min(cost on the left + 1, cost on the right + 1, cost on the diagonal + 2 * current cost)
                     let left = (x == 0) ? y + 2 : (x == dict.min_max[y].min) ?  Infinity : dict[dkey(x-1, y)] + 1;
                     let top  = (y == 0) ? x + 2 : (x > dict.min_max[y-1].max) ? Infinity : dict[dkey(x, y-1)] + 1;
-                    let diagonal = (y == 0 && x == 0) ? 0 : (y == 0) ? x + 1 : (x == 0) ? y + 1 : (x - 1 > dict.min_max[y-1].max || x - 1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1, y-1)] + 2 * (score(text_array1[y], text_array2[x], {typecase: ((alignment_options.typecase) ? 0 : 0.1), diacritics: ((alignment_options.diacritics) ? 0 : 0.2)}));
+                    let diagonal = (y == 0 && x == 0) ? 0 : (y == 0) ? x + 1 : (x == 0) ? y + 1 : (x - 1 > dict.min_max[y-1].max || x - 1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1, y-1)] + 2 * (score(text_array1[y], text_array2[x], {typecase: ((alignment_options.typecase) ? 0 : 0.1), diacritics: ((alignment_options.diacritics) ? 0 : 0.2), punctuation: !(alignment_options.punct)}));
                     dict[dkey(x, y)] = Math.min(left,top,diagonal);
                 }
             }
@@ -1017,16 +1048,16 @@
         function alt_bring_text_back(text_array, text1, text2, alignment_options) {
             /** @type {wordblock[]} */
             let result_array = new Array(0);
-            if (alignment_options.punct) {
-                let punct_array_1 = string_to_punct(text1); //the first text's punctuation
-                let punct_array_2 = string_to_punct(text2); //same for text 2
+            if (alignment_options.punct) { //if punctuation isn't taken into account by the algorithm
+                let punct_array_1 = string_to_punct_and_separators(text1); //the first text's punctuation
+                let punct_array_2 = string_to_punct_and_separators(text2); //same for text 2
                 let pt_1 = 0;
                 let pt_2 = 0;
-                if (string_to_punct(string_interlace(text1)[0]).length != 0) {
+                if (string_to_punct_and_separators(string_interlace(text1)[0]).length != 0) {
                     result_array.push({label: 4, left: punct_array_1[pt_1], right: ""});
                     pt_1++;
                 }
-                if (string_to_punct(string_interlace(text2)[0]).length != 0) {
+                if (string_to_punct_and_separators(string_interlace(text2)[0]).length != 0) {
                     result_array.push({label: 4, left: "", right: punct_array_2[pt_2]});
                     pt_2++;
                 }
@@ -1036,6 +1067,25 @@
                     if ((block.label != 2) && (pt_2 < punct_array_2.length)) {result_array.push({label:4, left: "", right: punct_array_2[pt_2]}); pt_2++;}
                 }
                 return result_array;
+            }
+            else {
+                let separators_array_1 = string_to_separators(text1);
+                let separators_array_2 = string_to_separators(text2);
+                let pt_1 = 0;
+                let pt_2 = 0;
+                if (text1.slice(0,1).test(/\p{Z}|\p{C}/u)) {
+                    result_array.push({label: 4, left: separators_array_1[pt_1], right: ""});
+                    pt_1++;
+                }
+                if (text2.slice(0,1).test(/\p{Z}|\p{C}/u)) {
+                    result_array.push({label: 4, left: "", right: separators_array_2[pt_2]});
+                    pt_2++;
+                }
+                for (var block of text_array) {
+                    result_array.push(block);
+                    if ((block.label != 3) && (pt_1 < separators_array_1.length)) {result_array.push({label:4, left: separators_array_1[pt_1], right: ""}); pt_1++;}
+                    if ((block.label != 2) && (pt_2 < separators_array_2.length)) {result_array.push({label:4, left: "", right: separators_array_2[pt_2]}); pt_2++;}
+                }
             }
             return text_array;
         }
@@ -1049,10 +1099,12 @@
             if (typeint==0) return "unchanged";
             if (typeint==2) return "removed";
             if (typeint==3) return "added";
-            if (typeint==4) return "punct";
+            if (typeint==4) return "separators";
             if (typeint==0.1) return "changed typecase";
             if (typeint==0.2) return "changed diacritics";
             if (typeint==0.3) return "changed typecase diacritics";
+            if (typeint==0.85) return "unchanged punct";
+            if (typeint==0.95) return "changed punct";
             if (typeint==1) return "non_corresponding";
             return "changed";
         }
@@ -1066,7 +1118,6 @@
             document.querySelector("#left_panel").scrollTop = document.querySelector("#l_"+block_id).offsetTop - offsetHeight;
             document.querySelector("#right_panel").scrollTop = document.querySelector("#r_"+block_id).offsetTop - offsetHeight;
         }
-
 
         /**
          * Creates spans in the result display panels.
@@ -1140,7 +1191,7 @@
             document.querySelectorAll(".panel").forEach(element => {
                 element.style.display = "block";
             });
-            document.querySelectorAll(".unchanged, .changed").forEach(element => {
+            document.querySelectorAll("(.unchanged, .changed):not(punct)").forEach(element => {
                 var id = element.id.split('_')[1];
                 element.addEventListener("click", function() {scroll_to_id(id);}); //on click, scrolls the span and its parallel span to the middle
                 element.addEventListener("mouseenter", function() { //on hover, underlines the span and its parallel span

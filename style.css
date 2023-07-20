@@ -69,12 +69,6 @@ textarea, .panel {
 
 textarea {
     resize: none;
-    /*background-color:rgb(0,0,0);
-    background-image: url(http://www.zingerbugimages.com/backgrounds/parchment_paper_wallpaper_texture_seamless.jpg);
-    background-position: top left;
-    background-repeat: repeat;
-    background-attachment: fixed;
-    background-size: 25%;*/
 }
 
 .box {
@@ -108,56 +102,23 @@ textarea {
     justify-content: center;
 }
 
-#grid_popup {
-    position: fixed;
-    left: 5%;
-    top: 5%;
-    bottom: 20%;
-    right: 5%;
-    z-index: 10;
-}
-
-.path_cell {
-    background-color: azure;
-}
-
-#popup_closer_button {
-    position: fixed;
-    bottom: 10%;
-    left: auto;
-    right: auto;
-    z-index: 10;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(2520deg); }
-}
-
-#loader {
-    display: block;
-    opacity: 0;
-    z-index: -10;
-    animation: spin 6s cubic-bezier(.17,.67,.83,.67) infinite;
-    position:absolute;
-    top:0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    margin: auto;
-}
-
 .panel {
     overflow-y: auto;
     background-color: white;
     height: auto;
     width: auto;
     overflow-wrap: break-word;
+    scroll-behavior: smooth;
 }
 
 .text_part {
     white-space: pre-wrap;
     color: rgb(40,40,40);
+}
+
+.changed {
+    color: white;
+    background-color: darkviolet;
 }
 
 .removed, #left_panel > .non_corresponding {
@@ -169,40 +130,6 @@ textarea {
     color: white;
     background-color: blue;
 }
-
-.changed {
-    color: white;
-    background-color: darkviolet;
-}
-
-.unchanged:hover {
-    text-decoration: black underline 2px;
-}
-
-/*
-.text_part:hover {
-    text-decoration: underline black 2px;
-}
-
-.removed {
-    color: rgb(255, 84, 84);
-}
-
-.removed:hover {
-    text-decoration: none;
-    color: rgb(240,240,240);
-    background-color: rgb(255, 165, 165);
-}
-
-.added {
-    color: rgb(42, 205, 255);
-}
-
-.added:hover {
-    text-decoration: none;
-    color: rgb(240,240,240);
-    background-color: rgb(141, 226, 255);
-}*/
 
 #reset_button, #export_button {
     display: none;
