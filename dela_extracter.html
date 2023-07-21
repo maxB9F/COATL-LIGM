@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <!--
+    COATL - Alignment Tool for Litterary (or other) texts.
+    Copyright (C) 2023 Maxime Kremer
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+    -->
+    <title>DELA EXTRACTER FOR COATL</title>
+    <script>
+        /**
+         * A word in the dictionary.
+         * @typedef {Object} word
+         * @property {!string} lemma
+         * @property {!string[]} types
+         * @property {?string[]} numgender - Grammatical number(s) and gender(s) if not a verb
+         * @property {?string[]} conjug - Grammatical conjugation(s) if a verb
+        */
+
+        var openFile = function(event) {
+            var input = event.target;
+            input.style.display = "none";
+            var reader = new FileReader();
+            reader.onload = function() {
+                var text = reader.result;
+                var node = document.getElementById("output");
+                node.innerText = text;
+            };
+            reader.readAsText(input.files[0]);
+            document.getElementById("name_storer").innerText = input.files[0].name;
+            document.getElementById("create_json").style.display = "block";
+        };
+        function download(filename, text) {
+            var element = document.createElement("a");
+            element.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(text));
+            element.setAttribute("download", filename);
+            element.style.display = "none";
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        }
+        document.getElementById("create_json").addEventListener("click", function(event) {
+            event.target.style.display = "none";
+            let text = document.getElementById("output").innerText;
+            let text_array = text.split(/[\r\n]+/).filter(line => line.length > 0);
+            //we remove coumpounds with whitespaces :
+            text_array = text_array.filter(line => !((/[\s]+/).test(line)));
+            //we remove 3rd layer :
+            text_array = text_array.filter(line => !((/z3/).test(line)));
+            var return_object = {};
+            for (var line of text_array) {
+                let word = {};
+                let ar1 = line.split('.');
+                let ar2 = ar1[0].split(',');
+                word.lemma = (ar2.length > 1) ? ar2[1] : ar2[0];
+                let ar3 = ar1[1].split(':');
+                word.types = ar3[0].split('+').filter(type => !((/z/).test(type)));
+                if (word.types[0] == 'V') word.conjug = ar3.slice(1);
+                else word.numgender = ar3.slice(1);
+                return_object[ar1[0]] = word;
+            }
+            download(document.getElementById("name_storer").innerText + ".json", JSON.stringify(return_object));
+        });
+    </script>
+</head>
+<body>
+    <input type="file" accept="text/plain" onchange="openFile(event)">
+    <button id="create_json" type="button" style="display:none">Create .json file</button>
+    <div id="output" style="display:none"></div>
+    <div id="name_storer" style="display:none"></div>
+</body>
+</html>

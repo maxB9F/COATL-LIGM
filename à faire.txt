@@ -7,6 +7,8 @@ passer à arrays d'objets pour plusieurs formes normalisées
     - utiliser ces arrays pour la comparaison (d'abord forme initiale, puis NKFD, etc.)
     - refaire l'affichage en utilisant la forme initiale stockée
 
+pour dict : stocker valeur non propagée pour rendre le pathfinding plus rapide
+
 implémenter barre de chargement
 vérifier comment "externaliser" le calcul
 
