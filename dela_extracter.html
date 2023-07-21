@@ -24,7 +24,7 @@
         /**
          * A word in the dictionary.
          * @typedef {Object} word
-         * @property {!string} lemma
+         * @property {!string[]} lemma
          * @property {!string[]} types
          * @property {?string[]} numgender - Grammatical number(s) and gender(s) if not a verb
          * @property {?string[]} conjug - Grammatical conjugation(s) if a verb
@@ -52,34 +52,56 @@
             element.click();
             document.body.removeChild(element);
         }
-        document.getElementById("create_json").addEventListener("click", function(event) {
-            event.target.style.display = "none";
-            let text = document.getElementById("output").innerText;
-            let text_array = text.split(/[\r\n]+/).filter(line => line.length > 0);
-            //we remove coumpounds with whitespaces :
-            text_array = text_array.filter(line => !((/[\s]+/).test(line)));
-            //we remove 3rd layer :
-            text_array = text_array.filter(line => !((/z3/).test(line)));
-            var return_object = {};
-            for (var line of text_array) {
-                let word = {};
-                let ar1 = line.split('.');
-                let ar2 = ar1[0].split(',');
-                word.lemma = (ar2.length > 1) ? ar2[1] : ar2[0];
-                let ar3 = ar1[1].split(':');
-                word.types = ar3[0].split('+').filter(type => !((/z/).test(type)));
-                if (word.types[0] == 'V') word.conjug = ar3.slice(1);
-                else word.numgender = ar3.slice(1);
-                return_object[ar1[0]] = word;
-            }
-            download(document.getElementById("name_storer").innerText + ".json", JSON.stringify(return_object));
+        document.addEventListener("DOMContentLoaded", function() {
+            document.getElementById("create_json").addEventListener("click", function(event) {
+                event.target.style.display = "none";
+                let text = document.getElementById("output").innerText;
+                                
+                // JSON maker script : text input should be uncompressed dictionary from Unitex GramLab, it was made for DELA (french)
+                
+                let text_array = text.split(/[\r\n]+/).filter(line => line.length > 0);
+                console.log(text_array.length);
+                //we remove coumpounds with whitespaces :
+                text_array = text_array.filter(line => !((/[\s]+/).test(line)));
+                console.log(text_array.length);
+                //we remove 3rd layer :
+                text_array = text_array.filter(line => !((/z3/).test(line)));
+                console.log(text_array.length);
+                var return_object = {};
+                for (var line of text_array) {
+                    let word = {};
+                    let ar1 = line.split('.');
+                    let ar2 = ar1[0].split(',');
+                    word.lemma = (ar2.length > 1 && ar2[1].length > 0) ? [ar2[1]] : [ar2[0]];
+                    let ar3 = ar1[1].split(':');
+                    word.types = ar3[0].split('+').filter(type => !((/z/).test(type)));
+                    if (ar3.length > 1) {
+                        if (word.types[0] == 'V') word.conjug = ar3.slice(1);
+                        else word.numgender = ar3.slice(1);
+                    }
+                    if (ar2[0] in return_object) { //fusion of two words in the dictionary spelt the same
+                        return_object[ar2[0]].lemma = [...new Set([...return_object[ar2[0]].lemma, ...word.lemma])];
+                        return_object[ar2[0]].types = [...new Set([...return_object[ar2[0]].types, ...word.types])];
+                        if ("numgender" in word) {
+                            if ("numgender" in return_object[ar2[0]]) { return_object[ar2[0]].numgender = [...new Set([...return_object[ar2[0]].numgender, ...word.numgender])];}
+                            else return_object[ar2[0]].numgender = word.numgender;
+                        }
+                        if ("conjug" in word) {
+                            if ("conjug" in return_object[ar2[0]]) { return_object[ar2[0]].conjug = [...new Set([...return_object[ar2[0]].conjug, ...word.conjug])];}
+                            else return_object[ar2[0]].conjug = word.conjug;
+                        }
+                    }
+                    else return_object[ar2[0]] = word;
+                }
+                download(document.getElementById("name_storer").innerText + ".json", JSON.stringify(return_object));
+            });
         });
     </script>
 </head>
 <body>
     <input type="file" accept="text/plain" onchange="openFile(event)">
     <button id="create_json" type="button" style="display:none">Create .json file</button>
-    <div id="output" style="display:none"></div>
+    <div id="output"></div>
     <div id="name_storer" style="display:none"></div>
 </body>
 </html>

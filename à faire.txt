@@ -7,6 +7,9 @@ passer à arrays d'objets pour plusieurs formes normalisées
     - utiliser ces arrays pour la comparaison (d'abord forme initiale, puis NKFD, etc.)
     - refaire l'affichage en utilisant la forme initiale stockée
 
+pour l'instant : pas de POS-tagging, "des" est considéré à la fois comme le pluriel de "un" et de "de"
+si du POS-tagging est fait à l'avenir : respecter le format du DELAF et mettre à jour le script créateur de .json
+
 pour dict : stocker valeur non propagée pour rendre le pathfinding plus rapide
 
 implémenter barre de chargement
