@@ -48,6 +48,10 @@ button {
     margin: 1em;
 }
 
+#grid_popup, #popup_closer_button {
+    z-index: 20;
+}
+
 .checkbox_container {
     height: 30px;
     margin: 1em;
@@ -112,8 +116,13 @@ textarea {
 }
 
 .text_part {
-    white-space: pre-wrap;
+    /*white-space: pre-wrap;*/
     color: rgb(40,40,40);
+}
+
+.separators {
+    background-color: green;
+    color: white;
 }
 
 .changed {

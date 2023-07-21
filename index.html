@@ -204,6 +204,31 @@
          * @property {boolean} bottom_left
         */
 
+
+
+
+        /**
+         * An object representing a word and its diverse forms
+         * @typedef {Object} wordobj
+         * @property {string} initial - The initial form as is in the input
+         * @property {string} type
+         * @property {string} gender - m|n|f
+         * @property {boolean} plural
+         * @property {number} person
+         * @property {string} time - P|I|S|T|Y|C|J|W|G|K|F
+         * @property {string} NFD
+         * @property {string} NFKD
+         * @property {string} diacritics - NFKD + diacritics removed
+         * @property {string} lemma - NKFD + lemmatisation (through DELA too ?)
+         * @property {} 
+        */
+
+
+
+
+
+
+
         var left_panel = document.getElementById("left_panel");
         var right_panel = document.getElementById("right_panel");
         
@@ -223,7 +248,7 @@
          * @returns {string[]}
         */
         function string_to_words(text) {
-            return text.split(/[\p{P}|\p{Z}|\p{C}]+/u).filter(block => block.length > 0); //the string is split according to the regular expression
+            return text.split(/[\p{P}\p{Z}\p{C}]+/u).filter(block => block.length > 0); //the string is split according to the regular expression
         }
         
         /**
@@ -241,7 +266,7 @@
          * @returns {string[]}
         */
         function string_to_separators(text) {
-            return text.split(/[^\p{Z}|\p{C}]+/u).filter(block => block.length > 0);
+            return text.split(/[^\p{Z}]+/u).filter(block => block.length > 0);
         }
 
         /**
@@ -250,7 +275,7 @@
          * @returns {string[]}
         */
         function string_to_punct_and_separators(text) {
-            return text.split(/[^\p{P}|\p{Z}|\p{C}]+/u).filter(block => block.length > 0);
+            return text.split(/[^\p{P}\p{Z}\p{C}]+/u).filter(block => block.length > 0);
         }
 
         /**
@@ -259,7 +284,26 @@
          * @returns {string[]}
         */
         function string_interlace(text) {
-            return text.replace(/[\p{Z}|\p{C}]+/gu, '').split(/([\p{P}]+)/u).filter(block => block.length > 0); 
+            return text.split(/[\p{Z}\p{C}]+/u).map(block => block.split((/([\p{P}]+)/gu))).flat().filter(block => block.length > 0);
+        }
+
+        function string_to_separators_with_rest(text) {
+            let text1 = text.split(/([\p{Z}\p{C}]+)/gu);
+            console.log(text1);
+            let text2 = text1.map(block => block.split((/([\p{P}]+)/gu)));
+            console.log(text2);
+            let text3 = text2.flat().filter(block => block.length > 0 && !((/[]+/u).test(block)));
+            console.log(text3);
+            let text4 = text3.map(function(block) {
+                if ((/[^\p{Z}\p{C}]/u).test(block)) return "";
+                return block;
+            });
+            console.log(text4);
+            return text4;
+            /*return text.split(/([\p{Z}\p{C}]+)/u).map(block => block.split((/([\p{P}]+)/u))).flat().map(function(block) {
+                if ((/[^\p{Z}\p{C}]/u).test(block)) return "";
+                return block;
+            });*/
         }
 
         /**
@@ -359,19 +403,19 @@
         */
         function score(word1, word2, options) {
             if (options.punctuation) {
-                if (word1.test(/[\p{P}]+/u)) {
-                    if (word2.test(/[\p{P}]+/u)) {
+                if ((/[\p{P}]+/u).test(word1)) {
+                    if ((/[\p{P}]+/u).test(word2)) {
                         if (word1==word2) return 0.85; //the same punctuation string
                         return 0.95; //two different punctuation strings
                     }
                     return 1; //one punctuation string and one word
                 }
-                if (word2.test(/[\p{P}]+/u)) return 1; //idem
+                if ((/[\p{P}]+/u).test(word2)) return 1; //idem
             }
             if (word1 == word2) return 0;
             if ((("typecase" in options) && (options.typecase != null)) && (word1.toLowerCase() == word2.toLowerCase())) return options.typecase;
             if (("diacritics" in options) && (options.diacritics != null)) {
-                let diacritics_regex = /[\p{Sk}|\p{Lm}|\p{M}]+/gu;
+                let diacritics_regex = /[\p{Sk}\p{Lm}\p{M}]+/gu;
                 if (word1.normalize("NFD").replace(diacritics_regex,'') == word2.normalize("NFD").replace(diacritics_regex,'')) return options.diacritics;
                 if ((("typecase" in options) && (options.typecase != null)) && (word1.toLowerCase().normalize("NFD").replace(diacritics_regex,'') == word2.toLowerCase().normalize("NFD").replace(diacritics_regex,''))) return options.typecase + options.diacritics;
                 //normalisation NKFD normalise également les ligatures et formes anciennes de lettres (s long par ex.), à considérer
@@ -562,6 +606,8 @@
                 div_amount_y = Math.floor(Math.sqrt(max_matrix_size));
             }
             if (div_amount_x > 2 && div_amount_y > 2) { //if it's interesting to divide the texts
+                /** @type {grid_display} */
+                let grid_display = {};
                 let lvl2array1 = new Array(div_amount_y); //the arrays of text "blocks"
                 let lvl2array2 = new Array(div_amount_x);
                 let block_size_1 = text_array1.length / div_amount_y;
@@ -570,8 +616,12 @@
                 for (var j = 0; j < div_amount_y; j++) lvl2array1[j] = text_array1.slice(Math.floor(j * block_size_1), Math.floor((j+1) * block_size_1));
                 /** @type {matrix} */
                 let matrix = new Array(div_amount_y+1);
+                grid_display.unpropagated = new Array(div_amount_y+1);
+                grid_display.propagated = new Array(div_amount_y+1);
                 for (var i = 0; i < div_amount_y + 1; i++) {
                     matrix[i] = new Array(div_amount_x + 1);
+                    grid_display.unpropagated[i] = new Array(div_amount_x + 1);
+                    grid_display.propagated[i] = new Array(div_amount_x + 1);
                     matrix[i][0] = i;
                     grid_display.unpropagated[i][0] = i; //only on the dev branch, to view the path in the multi-scale matrix
                     grid_display.propagated[i][0] = i;
@@ -703,7 +753,7 @@
                 cost_dict.min_max[i].min = Infinity;
                 cost_dict.min_max[i].max = -Infinity;
             }
-            make_dict_boundaries(text_array1, text_array2, cost_dict, 50, 160000);
+            make_dict_boundaries(text_array1, text_array2, cost_dict, (alignment_options.punct) ? 100 : 200, 160000);
             if (start_time!=null) {
                 console.log("time taken to make the dict boundaries : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
                 dict_time = Date.now();
@@ -1048,46 +1098,67 @@
         function alt_bring_text_back(text_array, text1, text2, alignment_options) {
             /** @type {wordblock[]} */
             let result_array = new Array(0);
+            var pt_1 = 0;
+            var pt_2 = 0;
             if (alignment_options.punct) { //if punctuation isn't taken into account by the algorithm
-                let punct_array_1 = string_to_punct_and_separators(text1); //the first text's punctuation
-                let punct_array_2 = string_to_punct_and_separators(text2); //same for text 2
-                let pt_1 = 0;
-                let pt_2 = 0;
-                if (string_to_punct_and_separators(string_interlace(text1)[0]).length != 0) {
-                    result_array.push({label: 4, left: punct_array_1[pt_1], right: ""});
-                    pt_1++;
-                }
-                if (string_to_punct_and_separators(string_interlace(text2)[0]).length != 0) {
-                    result_array.push({label: 4, left: "", right: punct_array_2[pt_2]});
-                    pt_2++;
-                }
-                for (var block of text_array) {
-                    result_array.push(block);
-                    if ((block.label != 3) && (pt_1 < punct_array_1.length)) {result_array.push({label:4, left: punct_array_1[pt_1], right: ""}); pt_1++;}
-                    if ((block.label != 2) && (pt_2 < punct_array_2.length)) {result_array.push({label:4, left: "", right: punct_array_2[pt_2]}); pt_2++;}
-                }
-                return result_array;
-            }
-            else {
-                let separators_array_1 = string_to_separators(text1);
-                let separators_array_2 = string_to_separators(text2);
-                let pt_1 = 0;
-                let pt_2 = 0;
-                if (text1.slice(0,1).test(/\p{Z}|\p{C}/u)) {
+                let separators_array_1 = string_to_punct_and_separators(text1); //the first text's punctuation
+                let separators_array_2 = string_to_punct_and_separators(text2); //same for text 2
+                console.log(separators_array_1);
+                if ((/[\p{P}]/u).test(text1.slice(0,1))) {
                     result_array.push({label: 4, left: separators_array_1[pt_1], right: ""});
                     pt_1++;
                 }
-                if (text2.slice(0,1).test(/\p{Z}|\p{C}/u)) {
+                if ((/[\p{P}]/u).test(text2.slice(0,1))) {
                     result_array.push({label: 4, left: "", right: separators_array_2[pt_2]});
                     pt_2++;
                 }
                 for (var block of text_array) {
                     result_array.push(block);
-                    if ((block.label != 3) && (pt_1 < separators_array_1.length)) {result_array.push({label:4, left: separators_array_1[pt_1], right: ""}); pt_1++;}
-                    if ((block.label != 2) && (pt_2 < separators_array_2.length)) {result_array.push({label:4, left: "", right: separators_array_2[pt_2]}); pt_2++;}
+                    if ((block.label != 3) && (pt_1 < separators_array_1.length)) {
+                        let new_block = {label:4, left: separators_array_1[pt_1], right: ""};
+                        //console.log(new_block);
+                        result_array.push(new_block);
+                        pt_1++;
+                    }
+                    if ((block.label != 2) && (pt_2 < separators_array_2.length)) {
+                        let new_block = {label:4, left: "", right: separators_array_2[pt_2]};
+                        //console.log(new_block);
+                        result_array.push(new_block);
+                        pt_2++;
+                    }
                 }
             }
-            return text_array;
+            else {
+                let separators_array_1 = string_to_separators_with_rest(text1);
+                let separators_array_2 = string_to_separators_with_rest(text2);
+                console.log(separators_array_1);
+                if (separators_array_1[pt_1].length != 0) {
+                    result_array.push({label: 4, left: separators_array_1[pt_1], right: ""});
+                    pt_1++;
+                }
+                if (separators_array_2[pt_2].length != 0) {
+                    result_array.push({label: 4, left: "", right: separators_array_2[pt_2]});
+                    pt_2++;
+                }
+                for (var block of text_array) {
+                    result_array.push(block);
+                    pt_1++;
+                    pt_2++;
+                    if ((block.label != 3) && (pt_1 < separators_array_1.length) && (separators_array_1[pt_1].length != 0)) {
+                        let new_block = {label:4, left: separators_array_1[pt_1], right: ""};
+                        //console.log(new_block);
+                        result_array.push(new_block);
+                        pt_1++;
+                    }
+                    if ((block.label != 2) && (pt_2 < separators_array_2.length) && (separators_array_2[pt_2].length != 0)) {
+                        let new_block = {label:4, left: "", right: separators_array_2[pt_2]};
+                        //console.log(new_block);
+                        result_array.push(new_block);
+                        pt_2++;
+                    }
+                }
+            }
+            return result_array;
         }
 
         /**
@@ -1133,6 +1204,7 @@
                     new_span_left.classList.add("text_part",classes);
                     new_span_left.id = "l_"+span_id; //the span id used for synchronised scrolling
                     new_span_left.textContent = block.left;
+                    //console.log(block.left+" - "+new_span_left.textContent);
                     document.getElementById("left_panel").appendChild(new_span_left);
                 }
                 if (block.label!=2) { //create a span on the right
@@ -1191,7 +1263,7 @@
             document.querySelectorAll(".panel").forEach(element => {
                 element.style.display = "block";
             });
-            document.querySelectorAll("(.unchanged, .changed):not(punct)").forEach(element => {
+            document.querySelectorAll(".unchanged:not(punct), .changed:not(punct)").forEach(element => {
                 var id = element.id.split('_')[1];
                 element.addEventListener("click", function() {scroll_to_id(id);}); //on click, scrolls the span and its parallel span to the middle
                 element.addEventListener("mouseenter", function() { //on hover, underlines the span and its parallel span
@@ -1260,9 +1332,9 @@
                 //remove visibility of button and interaction with textareas
                 let start = Date.now();
                 /** @type {string} */
-                var left_text = document.querySelector("#left_textarea").value; //scans the left textarea
+                var left_text = document.querySelector("#left_textarea").value.normalize("NFC"); //scans the left textarea
                 /** @type {string} */
-                var right_text = document.querySelector("#right_textarea").value; //scans the right textarea
+                var right_text = document.querySelector("#right_textarea").value.normalize("NFC"); //scans the right textarea
                 var ta1 = (alignment_options.punct) ? string_to_words(left_text) : string_interlace(left_text); //split the left text into words
                 console.log("length of left text : "+ta1.length+" blocks");
                 var ta2 = (alignment_options.punct) ? string_to_words(right_text) : string_interlace(right_text);
@@ -1335,6 +1407,6 @@
             <button id="export_button" type="button">Export</button>
         </div>
     </div>
-    <img width="150" height="149" src="./logoIGM-300x298.png" id="loader">
+    <!--<img width="150" height="149" src="./logoIGM-300x298.png" id="loader">-->
 </body>
 </html>

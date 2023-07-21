@@ -1,5 +1,15 @@
 refaire la fusion de blocs ? (pas dingue si on veut pouvoir se faire souligner simultanément les mots parallèles)
 ajouter fonctionnalités de comparaison supplémentaires
+passer à arrays d'objets pour plusieurs formes normalisées
+(implémenter DELAF & Compromise fr)
+    - diviser le texte avec regexp
+    - faire une array d'objets avec plusieurs formes normalisées (NKFD, diacritiques, lemmatisation, racinisation, etc.)
+    - utiliser ces arrays pour la comparaison (d'abord forme initiale, puis NKFD, etc.)
+    - refaire l'affichage en utilisant la forme initiale stockée
+
+implémenter barre de chargement
+vérifier comment "externaliser" le calcul
+
 
 lemmatisation / racinisation / autres normalisations :
     - algo de base de racinisation + article : Carry
