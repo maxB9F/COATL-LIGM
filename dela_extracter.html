@@ -61,8 +61,8 @@
                 
                 let text_array = text.split(/[\r\n]+/).filter(line => line.length > 0);
                 console.log(text_array.length);
-                //we remove coumpounds with whitespaces :
-                text_array = text_array.filter(line => !((/[\s]+/).test(line)));
+                //we remove coumpounds with whitespaces, apostrophes and dashes :
+                text_array = text_array.filter(line => !((/[\s'-]+/).test(line)));
                 console.log(text_array.length);
                 //we remove 3rd layer :
                 text_array = text_array.filter(line => !((/z3/).test(line)));
@@ -74,7 +74,8 @@
                     let ar2 = ar1[0].split(',');
                     word.lemma = (ar2.length > 1 && ar2[1].length > 0) ? [ar2[1]] : [ar2[0]];
                     let ar3 = ar1[1].split(':');
-                    word.types = ar3[0].split('+').filter(type => !((/z/).test(type)));
+                    word.types = ar3[0].split('+').filter(type => !((/z|Hum|N/).test(type)));
+                    if (word.types.length == 0) continue;
                     if (ar3.length > 1) {
                         if (word.types[0] == 'V') word.conjug = ar3.slice(1);
                         else word.numgender = ar3.slice(1);
@@ -93,6 +94,7 @@
                     }
                     else return_object[ar2[0]] = word;
                 }
+                console.log(Object.keys(return_object).length);
                 download(document.getElementById("name_storer").innerText + ".json", JSON.stringify(return_object));
             });
         });

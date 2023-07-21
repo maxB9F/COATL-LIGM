@@ -167,6 +167,12 @@
          * @property {min_max_cell[]} min_max - The first and last filled cell of every row in the matrix
         */
         /**
+         * A cell in the dictionary, storing both unpropagated and propagated score
+         * @typedef {Object} dict_cell
+         * @property {number} unpropagated
+         * @property {number} propagated
+        */
+        /**
          * A result block.
          * @typedef {Object} wordblock
          * @property {number} label - The number corresponding to the type of the block (added, removed, etc)
@@ -203,31 +209,28 @@
          * @property {boolean} top_right
          * @property {boolean} bottom_left
         */
-
-
-
-
+        /**
+         * The DELA_fr dictionary as JSON.
+         * @typedef {Object} dela_dict - Contains dela_word objects with dictionary entry strings as keys.
+        */
+        /**
+         * A word in a dela_dict.
+         * @typedef {Object} dela_word
+         * @property {!string[]} lemma
+         * @property {!string[]} types
+         * @property {?string[]} numgender - Grammatical number(s) and gender(s) if not a verb
+         * @property {?string[]} conjug - Grammatical conjugation(s) if a verb
+        */
         /**
          * An object representing a word and its diverse forms
          * @typedef {Object} wordobj
          * @property {string} initial - The initial form as is in the input
-         * @property {string} type
-         * @property {string} gender - m|n|f
-         * @property {boolean} plural
-         * @property {number} person
-         * @property {string} time - P|I|S|T|Y|C|J|W|G|K|F
+         * @property {string} lowercase
          * @property {string} NFD
          * @property {string} NFKD
          * @property {string} diacritics - NFKD + diacritics removed
-         * @property {string} lemma - NKFD + lemmatisation (through DELA too ?)
-         * @property {} 
+         * @property {string} in_dict - The form present in the dictionary
         */
-
-
-
-
-
-
 
         var left_panel = document.getElementById("left_panel");
         var right_panel = document.getElementById("right_panel");
@@ -307,6 +310,30 @@
         }
 
         /**
+         * Converts an array of words into an array of wordobjs corresponding to the words of the text in order.
+         * @param {string[]} text_array
+         * @param {dela_dict} dictionary
+         * @returns {wordobj[]}
+        */
+        function text_array_to_wordobj_array(text_array, dictionary) {
+            /** @type {wordobj[]} */
+            let wordobj_array = new Array();
+            for (var word of text_array) {
+                /** type {wordobj} */
+                let added_wordobj = {initial:word};
+                added_wordobj.lowercase = word.toLowerCase();
+                added_wordobj.NFD = added_wordobj.lowercase.normalize("NFD");
+                added_wordobj.NFKD = added_wordobj.lowercase.normalize("NFKD");
+                added_wordobj.diacritics = added_wordobj.NFKD.replace(/[\p{Sk}\p{Lm}\p{M}]+/gu, '');
+                let NFKC = word.normalize("NFKC")
+                if (NFKC in dictionary) added_wordobj.in_dict = NFKC;
+                else if (NFKC.toLowerCase in dictionary) added_wordobj.in_dict = NFKC.toLowerCase;
+                wordobj_array.push(added_wordobj);
+            }
+            return wordobj_array;
+        }
+
+        /**
          * Calculates the Jaccard distance of two arrays.
          * @param {*[]} array1
          * @param {*[]} array2
@@ -319,43 +346,6 @@
             array2.map(function(w) {m2.update(w)});
             //console.log(1 - m1.jaccard(m2));
             return 1 - m1.jaccard(m2);
-        }
-
-        /**
-         * Returns the length of the shortest path in a Levenshtein distance matrix of words (recursive).
-         * @deprecated
-         * @param {matrix} matrix
-         * @param {number} x - The x-coordinate at which you enter the matrix
-         * @param {number} y - The y-coordinate at which you enter the matrix
-         * @param {string[]} array_x - The array of words corresponding to the x coordinate
-         * @param {string[]} array_y - The array of words corresponding to the y coordinate
-         * @returns {number}
-        */
-        function shortest_path(matrix,x,y, array_x, array_y) {
-            if (x==0) return y;
-            if (y==0) return x;
-            let left = matrix[y][x-1];
-            let top = matrix[y-1][x];
-            let diag = matrix[y-1][x];
-            if (left < diag) {
-                if (top < left) return 1 + shortest_path(matrix,x,y-1, array_x, array_y);
-                if (left < top) return 1 + shortest_path(matrix,x-1,y, array_x, array_y);
-                return 1 + Math.min(shortest_path(matrix,x,y-1, array_x, array_y), shortest_path(matrix,x-1,y, array_x, array_y));
-            }
-            // diag <= left
-            if (top < diag) return 1 + shortest_path(matrix,x,y-1, array_x, array_y);
-            // diag <= top && diag <= left
-            if (array_x[x-1]==array_y[y-1]) {
-                return shortest_path(matrix,x-1,y-1, array_x, array_y);
-            }
-            // add 2 to diag
-            if (diag == top) {
-                if (diag == left) return Math.min(1+shortest_path(matrix,x,y-1, array_x, array_y), 1+shortest_path(matrix,x-1,y, array_x, array_y), 2+shortest_path(matrix,x-1,y-1, array_x, array_y));
-                return Math.min(1+shortest_path(matrix,x,y-1, array_x, array_y), 2+shortest_path(matrix,x-1,y-1, array_x, array_y));
-            }
-            if (diag == left) return Math.min(1+shortest_path(matrix,x-1,y, array_x, array_y), 2+shortest_path(matrix,x-1,y-1, array_x, array_y));
-            // diag < top && diag < left
-            return 2+shortest_path(matrix,x-1,y-1, array_x, array_y);
         }
 
         /**
@@ -394,6 +384,196 @@
             return return_value;
         }
 
+
+        // TO TEST ON SAMPLE TEXTS, SCORES ARE AS FOLLOW FOR NOW
+        /*
+        equalities :
+            NFD : 0
+            lowercase : 0.02
+            NFKD : 0.05
+            diacritics : 0.1 
+        in dictionary :
+            same lemma :
+                (0.14 is calculated after verbs)
+                both verbs :
+                    not same number : 0.15
+                    not same time : 0.16
+                    not same person : 0.17
+                    not same person & number : 0.18
+                    not same time & number : 0.19
+                    not same time & person : 0.2
+                    nothing the same : 0.21
+                share a type :
+                    same number and gender : 0.14
+                    not same gender : 0.22
+                    not same number : 0.23
+                    nothing the same : 0.24
+                    no numgender in one of the two : 0.25
+                just share a lemma : 0.26
+            not the same lemma :
+                are both CONJC : 0.27
+                are both CONJS : 0.28
+                are both DET : 0.29
+                are both PRO : 0.3
+                are both PREP :
+                    if same subtype : 0.4
+                    if different subtype : 0.45
+                are both ADV : 0.5
+                are both V with same numgender : 0.75
+                are both AJD with same numgender : 0.8
+        then return 1
+        */
+
+        /**
+         * Returns a similarity score (between 0 and 1) for the similarity between two wordobjs using multiple comparisons (scores are additioned if multiple comparisons are needed).
+         * @param {wordobj} word1
+         * @param {wordobj} word2
+         * @param {dela_dict} dictionary
+         * @param {scoreOptions} options
+         * @returns {number}
+        */
+        function score(word1, word2, dictionary, options) {
+            if (word1.NFD == word2.NFD) return 0;
+            if (word1.lowercase == word2.lowercase) return 0.02
+            if (word1.NFKD == word2.NFKD) return 0.05;
+            if (word1.diacritics == word2.diacritics) return 0.10;
+            if ("in_dict" in word1 && "in_dict" in word2) {
+                //scores reserved for words that share a lemma : 0.14 to 0.26
+                if (dictionary[word1.in_dict].lemma.some(item => dictionary[word1.in_dict].lemma.includes(item))) { //the words have the same lemma
+                    //scores reserved for conjugation differences : 0.15 to 0.21
+                    if ((dictionary[word1.in_dict].types.some(item => item == "V")) && (dictionary[word2.in_dict].types.some(item => item == "V"))) {
+                        //the two words are conjugations of the same verb
+                        let ret_value = 0.21; //score for difference in time, person/gender and number
+                        for (var conjug1 of dictionary[word1.in_dict].conjug) for (var conjug2 of dictionary[word2.in_dict].conjug) {
+
+                            //to make it faster, if you're sure of the values, automatically return if you find the lowest one
+                            //you could also include the value of ret_value in the tests to skip the ones you don't need to test (and remove Math.min)
+                            //this treats difference in gender as difference in grammatical person for now
+
+                            if (conjug1.slice(0,2) == conjug2.slice(0,2)) {
+                                ret_value = Math.min(ret_value, 0.15); //difference in number but not in person or time
+                                continue;
+                            }
+                            if (conjug1.slice(1) == conjug2.slice(1)) {
+                                ret_value = Math.min(ret_value, 0.16); //difference in time but not in number or person
+                                continue;
+                            } 
+                            if (conjug1.slice(0,1) == conjug2.slice(0,1)) {
+                                if (conjug1.slice(2) == conjug2.slice(2)) ret_value = Math.min(ret_value, 0.17); //difference in person but not in number or time
+                                else ret_value = Math.min(ret_value, 0.18); //difference in person and number but not in time
+                                continue;
+                            }
+                            if (conjug1.slice(1,2) == conjug2.slice(1,2)) {
+                                ret_value = Math.min(ret_value, 0.19); //difference in time and number
+                                continue;
+                            }
+                            if (conjug1.slice(2) == conjug2.slice(2)) ret_value = Math.min(ret_value, 0.2); //difference in time and person
+                        }
+                        return ret_value;
+                    }
+                    //scores reserved for gender and number differences when not verbs : 0.14 & 0.22 to 0.25
+                    if (dictionary[word1.in_dict].types.some(item => dictionary[word1.in_dict].types.includes(item))) {
+                        if ("numgender" in dictionary[word1.in_dict] && "numgender" in dictionary[word2.in_dict]) {
+                            let ret_value = 0.24; //score for difference in gender and number
+                            for (var numgender1 of dictionary[word1.in_dict].numgender) for (var numgender2 of dictionary[word2.in_dict].numgender) {
+                                if (numgender1 == numgender2) return 0.14; //this means one word is a contraction of the other
+                                if (numgender1.slice(0,1) == numgender2.slice(0,1)) {
+                                    ret_value = 0.22; //difference in gender only
+                                    continue;
+                                }
+                                if (numgender1.slice(1) == numgender2.slice(1)) ret_value = 0.23; //difference in number only
+                            }
+                            return ret_value;
+                        }
+                        //same lemma, not verbs, but no numgender associated
+                        return 0.25;
+                    }
+                    //both words aren't verbs, although they share a lemma
+                    return 0.26;
+                }
+                
+                //our words don't share a lemma, scores from 0.27 to 1
+
+                //scores reserved for "CONJC" : 0.27
+                if ((dictionary[word1.in_dict].types.some(item => item == "CONJC")) && (dictionary[word2.in_dict].types.some(item => item == "CONJC"))) {
+                    return 0.27;
+                }
+                //scores reserved for "CONJS" : 0.28
+                if ((dictionary[word1.in_dict].types.some(item => item == "CONJS")) && (dictionary[word2.in_dict].types.some(item => item == "CONJS"))) {
+                    return 0.28;
+                }
+                //scores reserved for "DET" : 0.29
+                if ((dictionary[word1.in_dict].types.some(item => item == "DET")) && (dictionary[word2.in_dict].types.some(item => item == "DET"))) {
+                    return 0.29;
+                }
+                //scores reserved for "PRO" : 0.3
+                if ((dictionary[word1.in_dict].types.some(item => item == "PRO")) && (dictionary[word2.in_dict].types.some(item => item == "PRO"))) {
+                    return 0.3;
+                }
+                //scores reserved for "PREP" (all types) : 0.4 & 0.45
+                if ((dictionary[word1.in_dict].types.some(item => (/PREP/).test(item))) && (dictionary[word2.in_dict].types.some(item => (/PREP/).test(item)))) {
+                    for (var type1 of dictionary[word1.in_dict].types) for (var type2 of dictionary[word2.in_dict].types) {
+                        if ((/PREP/).test(type1) && (/PREP/).test(type2) && type1 == type2) return 0.4
+                    }
+                    // if both PREP but not the same type, higher value
+                    return 0.45;
+                }
+                //scores reserved for "ADV" : 0.5
+                if ((dictionary[word1.in_dict].types.some(item => item == "ADV")) && (dictionary[word2.in_dict].types.some(item => item == "ADV"))) {
+                    return 0.5;
+                }
+                //scores reserved for conjugations similarities between dissimilar verbs : 0.65, 0.7, 0.75, 0.8, 0.85 & 0.9
+                // ONLY TAKING INTO ACCOUNT WORDS THAT SHARE A CONJUGATION FOR NOW (0.75)
+                if ((dictionary[word1.in_dict].types.some(item => item == "V")) && (dictionary[word2.in_dict].types.some(item => item == "V"))) { //the two words are verbs
+                    //let ret_value = 0.9; //score for difference in time, person/gender and number
+                    for (var conjug1 of dictionary[word1.in_dict].conjug) for (var conjug2 of dictionary[word2.in_dict].conjug) {
+                        if (conjug1 == conjug2) return 0.75
+                        /*if (conjug1.slice(0,2) == conjug2.slice(0,2)) {
+                            ret_value = Math.min(ret_value, 0.65); //difference in number but not in person or time
+                            continue;
+                        }
+                        if (conjug1.slice(1) == conjug2.slice(1)) {
+                            ret_value = Math.min(ret_value, 0.7); //difference in time but not in number or person
+                            continue;
+                        } 
+                        if (conjug1.slice(0,1) == conjug2.slice(0,1)) {
+                            if (conjug1.slice(2) == conjug2.slice(2)) ret_value = Math.min(ret_value, 0.17); //difference in person but not in number or time
+                            else ret_value = Math.min(ret_value, 0.75); //difference in person and number but not in time
+                            continue;
+                        }
+                        if (conjug1.slice(1,2) == conjug2.slice(1,2)) {
+                            ret_value = Math.min(ret_value, 0.8); //difference in time and number
+                            continue;
+                        }
+                        if (conjug1.slice(2) == conjug2.slice(2)) ret_value = Math.min(ret_value, 0.85);*/ //difference in time and person
+                    }
+                    //return ret_value;
+                }
+                //scores reserved for number and gender similarities between different adjectives : 0.71, 0.76, 0.81, 0.86, 0.91
+                // ONLY TAKING INTO ACCOUNT ADJECTIVES THAT SHARE THE SAME NUMGENDER FOR NOW (0.8)
+                if ((dictionary[word1.in_dict].types.some(item => item == "ADJ")) && (dictionary[word2.in_dict].types.some(item => item == "ADJ"))) {
+                    if ("numgender" in dictionary[word1.in_dict] && "numgender" in dictionary[word2.in_dict]) {
+                        //let ret_value = 0.86; //score for difference in gender and number
+                        for (var numgender1 of dictionary[word1.in_dict].numgender) for (var numgender2 of dictionary[word2.in_dict].numgender) {
+                            if (numgender1 == numgender2) return 0.8;
+                            /*if (numgender1.slice(0,1) == numgender2.slice(0,1)) {
+                                ret_value = 0.76; //difference in gender only
+                                continue;
+                            }
+                            if (numgender1.slice(1) == numgender2.slice(1)) ret_value = 0.81; //difference in number only*/
+                        }
+                        return ret_value;
+                    }
+                    //return 0.91;
+                }
+                //after filtration of the dictionary, only "N" and "NPropre" subsist with "NPropre" always having "Hum"
+                //scores reserved for number, gender and category similarities between different nouns ("N" xor "NPropre"): 0.67, 0.72, 0.77, 0.82, 0.87, 0.92, 0.97
+                // NOT TAKING NOUNS INTO ACCOUNT FOR NOW
+            }
+            //if (("scale" in options) && (options.scale!=null)) return levenshtein_score(options.scale[1], options.scale[0], word1.NFD, word2.NFD);
+            return 1;
+        }
+
         /**
          * Returns a similarity score (between 0 and 1) for the similarity between two strings (considered words) using multiple comparisons (scores are additioned if multiple comparisons are needed).
          * @param {string} word1
@@ -401,7 +581,7 @@
          * @param {scoreOptions} options
          * @returns {number}
         */
-        function score(word1, word2, options) {
+        function alt_score(word1, word2, options) {
             if (options.punctuation) {
                 if ((/[\p{P}]+/u).test(word1)) {
                     if ((/[\p{P}]+/u).test(word2)) {
@@ -462,131 +642,6 @@
         function hide_path() {
             document.getElementById("grid_popup").style.display = "none";
             document.getElementById("popup_closer_button").style.display = "none";
-        }
-
-        /**
-         * Aligns two text arrays and puts the scores in a dict without propagation (recursive).
-         * @deprecated
-         * @param {string[]} text_array1 - The full word array of text 1
-         * @param {string[]} text_array2 - The full word array of text 2
-         * @param {number} absolute_x - (for recursion) The starting x coordinate of the current call, set to 0 when calling externally
-         * @param {number} absolute_y - (for recursion) The starting y coordinate of the current call, set to 0 when calling externally
-         * @param {dict} dict - The dict to be filled
-         * @param {number} min_div_size - The minimum word array size at which the recursion happens
-         * @param {number} div_amount - The number of parts a word array should be divided in for recursion
-         * @param {alignmentOptions} alignment_options
-        */
-        function align(text_array1, text_array2, absolute_x, absolute_y,dict,min_div_size,div_amount, alignment_options) {
-            if (text_array1.length>min_div_size && text_array2.length>min_div_size) { //we need to divide even more before comparing words
-                /** @type {grid_display} */
-                let grid_display = {};
-                let lvl2array1 = new Array(div_amount);
-                let lvl2array2 = new Array(div_amount); //the arrays which will host the newly divided arrays
-                let block_size_1 = text_array1.length/div_amount; //the average size of a block
-                let block_size_2 = text_array2.length/div_amount;
-                for (var j=0;j<div_amount;j++) { //the process of homogeneously dividing the arrays
-                    lvl2array1[j] = text_array1.slice(Math.floor(j*block_size_1),Math.floor((j+1)*block_size_1));
-                    lvl2array2[j] = text_array2.slice(Math.floor(j*block_size_2),Math.floor((j+1)*block_size_2));
-                }
-                //we have two arrays of the text arrays divided into 100 each, we can use them to calculate levenshtein distance as well as the best path
-                /** @type {matrix} */
-                let matrix = new Array(div_amount+1); //the matrix for the Levenshtein distance
-                grid_display.unpropagated = new Array(div_amount+1);
-                grid_display.propagated = new Array(div_amount+1);
-                for (var i=0;i<div_amount+1;i++) { //filling the matrix with the basic costs (replaced by the Jaccard distance between the sets)
-                    matrix[i] = new Array(div_amount+1);
-                    grid_display.unpropagated[i] = new Array(div_amount+1);
-                    grid_display.propagated[i] = new Array(div_amount+1);
-                    for (var j=0;j<div_amount+1;j++) {
-                        matrix[i][j] = (j==0) ? i : (i==0) ? j : ((i!=j) && (matrix[j] != null)) ? matrix[j][i] : jaccard_distance(lvl2array1[i-1],lvl2array2[j-1]);
-                        grid_display.unpropagated[i][j] = matrix[i][j];
-                        if (j==0 || i==0) grid_display.propagated[i][j] = matrix[i][j];
-                        //console.log("cost before propagation in x:"+j+", y:"+i+" : "+matrix[i][j]);
-                    }
-                }
-                //we then have the second step (cost propagation)
-                for (var i=1;i<div_amount+1;i++) for (var j=1;j<div_amount+1;j++) {
-                    matrix[i][j] = Math.min(matrix[i-1][j]+1, matrix[i][j-1]+1, matrix[i-1][j-1]+matrix[i][j]);
-                    grid_display.propagated[i][j] = matrix[i][j];
-                    //console.log("cost after propagation in x:"+j+", y:"+i+" : "+matrix[i][j]);
-                }
-                //we now have the full matrix for both groups of a hundred arrays, we can make out the best path and do the recursion
-                /**@type {Array.<number[]>}*/
-                let path = new Array();
-                let x = div_amount; //the x and y coordinates to go through the matrix we just made (x for lvl2array2 and y for lvl2array1)
-                let y = div_amount; //we need to lower them by 1 to access the lvl 2 arrays are they're 100 blocks long compared to the 101*101 matrix
-                while (x>0 && y>0) { //while we haven't reached the top left corner
-                    if (x==1) { //automatic up
-                        path.push([x-1,y-1]);
-                        y-=1; //we go up
-                    }
-                    else if (y==1) { //automatic left
-                        path.push([x-1,y-1]);
-                        x-=1; //we go left
-                    }
-                    else {
-                        path.push([x-1,y-1]);
-                        if (x==1 && y==1) continue;
-                        let left_value = matrix[y][x-1];
-                        let top_value = matrix[y-1][x];
-                        let diagonal_value = matrix[y-1][x-1];   
-                        if (diagonal_value <= top_value) { //diagonal <= top
-                            if (diagonal_value <= left_value) { //diagonal <= top && diagonal <= left
-                                x-=1;
-                                y-=1; //we go in diagonal;
-                            }
-                            //left < diagonal <= top
-                            else {
-                                x-=1; //we go left
-                            }
-                        }
-                        //top < diagonal
-                        else if (left_value <= top_value) { //left <= top < diagonal
-                            x-=1; //we go left, same process as before
-                        }
-                        //top < left < diagonal
-                        else {
-                            y-=1; //we go up
-                        }
-                    }
-                }
-                grid_display.path = [...path];
-                show_path(grid_display);
-                // our path is made, we can now align the blocks on our path and start the recursion
-                x = -1;
-                y = -1;
-                let x_for_align = absolute_x + text_array2.length - lvl2array2[div_amount-1].length; //the absolute x and y coordinates we'll give to the descending align functions
-                let y_for_align = absolute_y + text_array1.length - lvl2array1[div_amount-1].length;
-                for (var coords of path) {
-                    if (coords[0]==x) { //x is the same : we went up
-                        y_for_align -= lvl2array1[coords[1]].length;
-                    }
-                    else if (coords[1]==y) { //y is the same : we went left
-                        x_for_align -= lvl2array2[coords[0]].length;
-                    }
-                    else if (x>=0 && y>=0) { //both coords are different, we went diagonally (and we're not in the bottom right)
-                        let next_x_for_align = x_for_align - lvl2array2[coords[0]].length;
-                        let next_y_for_align = y_for_align - lvl2array1[coords[1]].length;
-                        align(lvl2array1[y], lvl2array2[coords[0]], next_x_for_align, y_for_align, dict, min_div_size, div_amount, alignment_options);
-                        align(lvl2array1[coords[1]], lvl2array2[x], x_for_align, next_y_for_align, dict, min_div_size, div_amount, alignment_options);
-                        x_for_align = next_x_for_align;
-                        y_for_align = next_y_for_align;
-                    }
-                    x = coords[0];
-                    y = coords[1];
-                    align(lvl2array1[y], lvl2array2[x], x_for_align, y_for_align, dict, min_div_size, div_amount, alignment_options);
-                }
-            }
-            else { //we don't need to or cannot divide the texts more
-                for (var i=0;i<text_array1.length;i++) { //filling the dict with the basic costs (0 to 1)
-                    //on every y coordinate, we need to use the absolute coordinates to shift the min_max values of the dict on this line
-                    dict.min_max[absolute_y+i].min = Math.min(dict.min_max[absolute_y+i].min, absolute_x);
-                    dict.min_max[absolute_y+i].max = Math.max(dict.min_max[absolute_y+i].max, absolute_x+text_array2.length-1);
-                    for (var j=0;j<text_array2.length;j++) { //only filling the blocks used
-                        dict[dkey(absolute_x+j,absolute_y+i)] = score(text_array1[i],text_array2[j],{typecase:((alignment_options.typecase) ? 0 : 0.1), diacritics:((alignment_options.diacritics) ? 0 : 0.2)}); //if the words are the same, the cost is 0
-                    }
-                }
-            }
         }
 
         /**
@@ -696,57 +751,40 @@
 
         /**
          * Calculates the Levenshtein distance matrix in a dict.
-         * @param {string[]} text_array1 - The full word array of text 1 (y axis)
-         * @param {string[]} text_array2 - The full word array of text 2 (x axis)
+         * @param {wordobj[]} text_array1 - The full wordobj array of text 1 (y axis)
+         * @param {wordobj[]} text_array2 - The full wordobj array of text 2 (x axis)
          * @param {dict} dict - The dict needs to have its min_max array already filled
          * @param {alignmentOptions} alignment_options
         */
-        function calculate_and_propagate(text_array1, text_array2, dict, alignment_options) {
+        function calculate_and_propagate(wordobj_array_1, wordobj_array_2, dict, alignment_options) {
             for (var y=0;y<dict.min_max.length;y++) { //for every line of the matrix
                 //console.log("check min_max : "+dict.min_max[y].min+" - "+dict.min_max[y].max);
                 //if (dict.min_max[y].min = Infinity) dict.min_max[y] = {min: 0, max: text_array2.length - 1};
                 for (var x = dict.min_max[y].min ; x <= dict.min_max[y].max ; x++) { //only in the existing cells
                     //console.log("cell "+y+" "+x)
                     //min(cost on the left + 1, cost on the right + 1, cost on the diagonal + 2 * current cost)
+                    dict[dkey(x, y)] = {unpropagated: score(wordobj_array_1[y], wordobj_array_2[x], {typecase: ((alignment_options.typecase) ? 0 : 0.1), diacritics: ((alignment_options.diacritics) ? 0 : 0.2), punctuation: !(alignment_options.punct)})};
                     let left = (x == 0) ? y + 2 : (x == dict.min_max[y].min) ?  Infinity : dict[dkey(x-1, y)] + 1;
                     let top  = (y == 0) ? x + 2 : (x > dict.min_max[y-1].max) ? Infinity : dict[dkey(x, y-1)] + 1;
-                    let diagonal = (y == 0 && x == 0) ? 0 : (y == 0) ? x + 1 : (x == 0) ? y + 1 : (x - 1 > dict.min_max[y-1].max || x - 1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1, y-1)] + 2 * (score(text_array1[y], text_array2[x], {typecase: ((alignment_options.typecase) ? 0 : 0.1), diacritics: ((alignment_options.diacritics) ? 0 : 0.2), punctuation: !(alignment_options.punct)}));
-                    dict[dkey(x, y)] = Math.min(left,top,diagonal);
+                    let diagonal = (y == 0 && x == 0) ? 0 : (y == 0) ? x + 1 : (x == 0) ? y + 1 : (x - 1 > dict.min_max[y-1].max || x - 1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1, y-1)] + 2 * (dict[dkey(x, y)].unrpopagated);
+                    dict[dkey(x, y)].propagated = Math.min(left,top,diagonal);
                 }
             }
-        }
-
-        /**
-         * Propagates the scores in a unpropagated Levenshtein distance matrix
-         * @deprecated
-         * @param {Object} dict - The matrix
-         * @param {Object[]} dict.min_max - The array of minimal and maximal row index of each row (to avoid going through each and every absent cell), each one has a max and a min value
-         * @param {number} dict.[dkey(x,y)] - The score in the cell with coords x and y
-         * @returns {dict}
-        */
-        function propagate(dict) {
-            for (var y=0;y<dict.min_max.length;y++) { //for every line of the matrix
-                for (var x = dict.min_max[y].min ; x <= dict.min_max[y].max ; x++) { //only in the existing cells
-                    //min(cost on the left + 1, cost on the right + 1, cost on the diagonal + 2 * current cost)
-                    let left = (x==0) ? y+2 : (x==dict.min_max[y].min) ?  Infinity : dict[dkey(x-1,y)]+1;
-                    let top  = (y==0) ? x+2 : (x>dict.min_max[y-1].max) ? Infinity : dict[dkey(x,y-1)]+1;
-                    let diagonal = (y==0 && x==0) ? 0 : (y==0) ? x+1 : (x==0) ? y+1 : (x-1 > dict.min_max[y-1].max || x-1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1,y-1)]+(2*dict[dkey(x,y)]);
-                    dict[dkey(x,y)] = Math.min(left,top,diagonal);
-                }
-            }
-            return dict;
         }
 
         /**
          * Creates a dictionary to store a Levensthein distance matrix.
-         * @param {string[]} text_array1 - Array of words
-         * @param {string[]} text_array2 - Array of words
+         * @param {string[]} text_array1 - Array of words of text 1 (y axis)
+         * @param {string[]} text_array2 - Array of words of text 2 (x axis)
+         * @param {wordobj[]} wordobj_array_1 - The full wordobj array of text 1 (y axis)
+         * @param {wordobj[]} wordobj_array_2 - The full wordobj array of text 2 (x axis)
          * @param {?number} start_time - Start time of algorithm, set to null if no time should be displayed in console
          * @param {alignmentOptions} alignment_options
          * @returns {dict}
         */
-        function create_dict (text_array1, text_array2, start_time, alignment_options) {
+        function create_dict (text_array1, text_array2, wordobj_array_1, wordobj_array_2, alignment_options) {
             if (start_time!=null) var dict_time = Date.now();
+            /** @type {dict} */
             var cost_dict = {min_max: new Array(text_array1.length)};
             for (var i=0;i<cost_dict.min_max.length;i++) { //pre-filling the min_max array for an easier later filling
                 cost_dict.min_max[i] = {};
@@ -758,7 +796,7 @@
                 console.log("time taken to make the dict boundaries : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
                 dict_time = Date.now();
             }
-            calculate_and_propagate(text_array1, text_array2, cost_dict, alignment_options);
+            calculate_and_propagate(wordobj_array_1, wordobj_array_2, cost_dict, alignment_options);
             //cost_dict = propagate(cost_dict);
             if (start_time!=null) {
                 console.log("time taken to calculate & propagate : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
@@ -779,7 +817,6 @@
             let result_array = new Array();
             let x = text_array2.length-1; //we start in the bottom right corner
             let y = text_array1.length-1;
-            let score_options = {typecase : ((alignment_options.typecase) ? 0 : 0.1), diacritics:((alignment_options.diacritics) ? 0 : 0.2), scale:[0,0.9]};
             while (x>=-1 && y>=-1) { // this is only to avoid errors, the while should end on 'break;' instructions if nothing wrong happens
                 //console.log("x,y : "+x+","+y);
                 if (x<=-1) { //on the left-most side of the dict
@@ -797,14 +834,14 @@
                     }
                     break;
                 }
-                let diagonal_value = (dkey(x-1,y-1) in dict) ? dict[dkey(x-1,y-1)] : null;
-                let left_value = (dkey(x-1,y) in dict) ? dict[dkey(x-1,y)] : null;
-                let top_value = (dkey(x,y-1) in dict) ?  dict[dkey(x,y-1)] : null;
+                let diagonal_value = (dkey(x-1,y-1) in dict) ? dict[dkey(x-1,y-1)].propagated : null;
+                let left_value = (dkey(x-1,y) in dict) ? dict[dkey(x-1,y)].propagated : null;
+                let top_value = (dkey(x,y-1) in dict) ?  dict[dkey(x,y-1)].propagated : null;
 
                 // !!!! the following block (border) should be optimised using min_max
 
                 if (left_value==null && top_value==null) {
-                    result_array.push({label:score(text_array1[y],text_array2[x],score_options), left: text_array1[y], right:text_array2[x]});
+                    result_array.push({label: dict[dkey(x, y)].unpropagated, left: text_array1[y], right:text_array2[x]});
                     x--;
                     y--;
                     //console.log("diag (in 0,0 or no left nor top square)");
@@ -827,7 +864,7 @@
                 if (text_array2[x]==null) console.log("error in x="+x);
                 //console.log("not on border, word1 : "+text_array1[y]+", word2 : "+text_array2[x]);
                 if (diagonal_value <= left_value && diagonal_value <= top_value) {
-                    let new_label = score(text_array1[y],text_array2[x],score_options); //non restricted label for further comparison
+                    let new_label = dict[dkey(x, y)].unpropagated //non restricted label for further comparison
                     if (new_label<1) {
                         result_array.push({label:new_label, left: text_array1[y], right:text_array2[x]});
                         //console.log("diag (diag <= top & diag <= left & non-strict score < 1)");
@@ -856,234 +893,6 @@
                     y--;
                 }
             }
-            return result_array;
-        }
-
-        // as of now, the two following functions are useless as we have optimised the make_out_path function's pathfinding by modifying the propagate function
-
-        //alternative tree pathmaking :
-        //the tree is an object, with sets of coordinates as keys and nodes as values
-        //a node is an object, with a "length" attribute (the length of the best path from this node to the end) and one to three other pairs of coordinates, to be used as keys in the tree
-        //the pathmaking algorithm works like so:
-        //      we check wether the keys are already in the tree with a node, if so we end the recursion
-        //      we create a node in the tree with the coordinates as the key
-        //      if we're in (0,0), we set the "length" attribute to 0 and end the recursion 
-        //      we check the values of the three following coordinate pairs (up, left and diagonal)
-        //      we reference all values with the lowest score (with keys up, left & diag)
-        //      we cycle through the referenced values to apply the recursion
-        //      after the recursion has been applied, we compare the lengths of the referenced nodes
-        //      we modulate the diagonal node if there is one according to wether the words correspond or not (-1 if they do, +1 if they don't)
-        //      we only keep the nodes with the lowest values, we delete the other ones (from the node, not from the tree)
-        //      we end the recursion
-        //after the tree has been made, we can go through it to create the result array :
-        //      if we are in (0,0), we end the loop
-        //      if there's only one node, we add the corresponding block to the result array and go to that node
-        //      if not :
-        //          if there's a diag key and the score of the two words is less than one, we go there
-        //          else, we do a simple coordinate check to decide between left and right if the two are there
-        /**
-         * An object representing a node in a path tree, corresponding to coordinates in a Levenshtein distance matrix.
-         * @typedef {object} node
-         * @param {boolean} diag - True if the diagonal path is the shortest
-         * @param {boolean} up - True if the upwards path is the shortest
-         * @param {boolean} left - True if the left path is the shortest
-         * @param {number} length - The length from this node to the final node (top left corner of the matrix)
-        */
-        /**
-         * A tree representing the shortest paths from the bottom right to the top left corners of a Levenshtein distance matrix, use .
-         * @typedef {object} path_tree - Use a 'coords' type key to access the node corresponding to those coordinates
-        */
-        /**
-         * Creates the tree of the shortest paths in a Levenshtein distance matrix (recursive).
-         * @deprecated
-         * @param {!dict} dict - The Levenshtein distance matrix
-         * @param {!path_tree} tree - Used for recursion, set to empty object when calling externally
-         * @param {!number} x - Used for recursion, set to bottom right coordinate when calling externally
-         * @param {!number} y - Used for recursion, set to bottom right coordinate when calling externally
-         * @param {!string[]} text_array1 - The full word array for text 1 (on the y axis)
-         * @param {!string[]} text_array2 - The full word array for text 2 (on the x axis)
-        */
-        function tree_maker(dict, tree, x, y, text_array1, text_array2) {
-            if (dkey(x,y) in tree) return;
-            //console.log("tree maker at x,y : "+x+","+y);
-            //iter++; console.log(iter);
-            if (x==-1) {
-                if (y==-1) {
-                    tree["-1,-1"] = {length:0};
-                    return;
-                }
-                tree[dkey(x,y)] = {length:(1+y),up:true};
-                tree_maker(dict,tree,x,y-1,text_array1,text_array2);
-                return;
-            }
-            if (y==-1) {
-                tree[dkey(x,y)] = {length:(1+x),left:true};
-                tree_maker(dict,tree,x-1,y,text_array1,text_array2);
-                return;
-            }
-            //console.log("not on dict border");
-            tree[dkey(x,y)] = {};
-            let current_node = tree[dkey(x,y)]; //the only variable stored inside the function call, should get rid of it if 'Maximum call stack size exceeded error' happens
-            if (x==0 && y==0) {
-                current_node.diag = true;
-            }
-            else if (!(dkey(x-1,y) in dict)) { //left is null, on border
-                if (dkey(x-1,y-1) in dict) { //opportunity to go diag, we have to check
-                    //console.log("up and diag");
-                    if (dict[dkey(x-1,y-1)] <= dict[dkey(x-1,y)]) current_node.diag = true;
-                    if (dict[dkey(x,y-1)] <= dict[dkey(x-1,y-1)]) current_node.up = true;
-                }
-                else { //we can only go up
-                    //console.log("only up");
-                    current_node.up = true;
-                }
-            }
-            else if (!(dkey(x,y-1) in dict)) { //top is null, on border
-                if (dkey(x-1,y-1) in dict) { //opportunity to go diag, we have to check
-                    //console.log("left and diag");
-                    if (dict[dkey(x-1,y-1)] <= dict[dkey(x,y-1)]) current_node.diag = true;
-                    if (dict[dkey(x-1,y)] <= dict[dkey(x-1,y-1)]) current_node.left = true;
-                }
-                else { //we can only go left
-                    //console.log("only left");
-                    current_node.left = true;
-                }
-            }
-            else { //neither are null, all three values are accessible
-                //console.log("all 3 values accessible");
-                if (dict[dkey(x-1,y-1)] <= dict[dkey(x,y-1)] && dict[dkey(x-1,y-1)] <= dict[dkey(x-1,y)]) current_node.diag = true;
-                if (dict[dkey(x-1,y)] <= dict[dkey(x-1,y-1)] && dict[dkey(x-1,y)] <= dict[dkey(x,y-1)]) current_node.left = true;
-                if (dict[dkey(x,y-1)] <= dict[dkey(x-1,y-1)] && dict[dkey(x,y-1)] <= dict[dkey(x-1,y)]) current_node.up = true;
-            }
-            //we can cycle through the values
-            if ("left" in current_node) tree_maker(dict,tree,x-1,y,text_array1,text_array2);
-            if ("up" in current_node) tree_maker(dict,tree,x,y-1,text_array1,text_array2);
-            if ("diag" in current_node) tree_maker(dict,tree,x-1,y-1,text_array1,text_array2);
-            //we can now add the length
-            current_node.left_length = ("left" in current_node) ? tree[dkey(x-1,y)].length + 1 : Infinity;
-            current_node.up_length = ("up" in current_node) ? tree[dkey(x,y-1)].length + 1 : Infinity;
-            current_node.diag_length = ("diag" in current_node) ? ((score(text_array1[y],text_array2[x],{typecase:0.1}) < 1) ? tree[dkey(x-1,y-1)].length : tree[dkey(x-1,y-1)].length+2) : Infinity;
-            current_node.length = Math.min(current_node.left_length, current_node.up_length, current_node.diag_length);
-            if (current_node.left_length > current_node.length) delete current_node.left;
-            if (current_node.up_length > current_node.length) delete current_node.up;
-            if (current_node.diag_length > current_node.length) delete current_node.diag;
-            delete current_node.left_length;
-            delete current_node.diag_length;
-            delete current_node.up_length;
-            return;
-        }
-
-        /**
-         * The alternate pathmaking function, uses tree_maker to make sure the path chosen is the best.
-         * @deprecated
-         * @param {!dict} dict - The Levenshtein distance matrix
-         * @param {!string[]} text_array1 - The full word array for text 1 (on the y axis)
-         * @param {!string[]} text_array2 - The full word array for text 2 (on the x axis)
-         * @returns {wordblock[]}
-        */
-        function alt_make_out_path(dict, text_array1, text_array2) {
-            let result_array = new Array();
-            // in the result Array, 0 is unchanged, any number between 0 and 1 is changed with variations, 2 is removed (up), 3 is added (left)
-            let x = text_array2.length-1;
-            let y = text_array1.length-1;
-            var tree = {};
-            tree_maker(dict, tree, x, y, text_array1, text_array2);
-            
-            while (x>=-1 || y>=-1) {
-                if (x<=-1 && y>=-1) break;
-                //console.log("pathmaking in x,y : "+x+","+y);
-                let current_node = tree[dkey(x,y)];
-                if ("diag" in current_node) {
-                    let new_label = score(text_array1[y],text_array2[x],{typecase:0.1,scale:[0,0.1]});
-                    if (((!("left" in current_node)) && (!("up" in current_node))) || (label<1)) {
-                        console.log("diag (only option or words similar)");
-                        result_array.push({label:new_label, left:text_array1[y], right:text_array2[x]});
-                        x--;
-                        y--;
-                    }
-                    else if ("left" in current_node) {
-                        if ("up" in current_node && y>=x) {
-                            console.log("up (rather than diag, y>=x)");
-                            result_array.push({label:2, left:text_array1[y], right:""});
-                            y--;
-                        }
-                        else {
-                            console.log("left (rather than diag, y<x)");
-                            result_array.push({label:3, left:"", right:text_array2[x]});
-                            x--;
-                        }
-                    }
-                    else {
-                        console.log("up (rather than diag, left not considered)");
-                        result_array.push({label:2, left:text_array1[y], right:""});
-                        y--;
-                    }
-                }
-                else if ("up" in current_node) {
-                    if ("left" in current_node && x>y) {
-                        console.log("left (left = up & y<x)");
-                        result_array.push({label:3, left:"", right:text_array2[x]});
-                        x--;
-                    }
-                    else {
-                        console.log("up (best option)");
-                        result_array.push({label:2, left:text_array1[y], right:""});
-                        y--;
-                    }
-                }
-                else {
-                    console.log("left (best option)");
-                    result_array.push({label:3, left:"", right:text_array2[x]});
-                    x--;
-                }
-            }
-            return result_array;
-        }
-
-        /**
-         * Fuses blocks of similar nature and adds punctuation.
-         * @deprecated
-         * @param {wordblock[]} text_array - The non-fused path
-         * @param {string} text1 - The full first text (on the y axis)
-         * @param {string} text2 - The full second text (on the x axis)
-         * @returns {wordblock[]}
-        */
-        function bring_text_back(text_array, text1, text2) {
-            /** @type {wordblock[]}*/
-            let result_array = [];
-            let previous_label = 4; //the variable used to know wether to create a new block or not
-            let i = -1; //the index of the last block of result_array
-            let punct_array_1 = text1.split(/[\p{Script=Latin}]+/u); //the first text's punctuation
-            let punct_array_2 = text2.split(/[\p{Script=Latin}]+/u); //same for text 2
-            //console.log(text1.split(/[\p{Script=Latin}]+/u));
-            //console.log(text2.split(/[\p{Script=Latin}]+/u));
-            result_array.push({label:4, left:punct_array_1[0], right:punct_array_2[0]});
-            let pt_1 = 1;
-            let pt_2 = 1;
-            for (var block of text_array) {
-                console.log("current pair : label: "+block.label+", left: "+block.left+", right: "+block.right);
-                if (block.label!=previous_label) { //the current couple of words doesn't have the same label as the last, we create a new grouping
-                    i++;
-                    result_array.push({label:block.label, left:"", right:""});
-                    console.log("should be empty :" + result_array[i].left + result_array[i].right);
-                }
-                previous_label=block.label;
-                if (block.label!=3) { //there's a left word
-                    result_array[i].left += block.left + punct_array_1[pt_1];
-                    console.log("should not be empty :" + block.left);
-                    pt_1++;
-                }
-                if (block.label!=2) { //there's a right word
-                    result_array[i].right += block.right + punct_array_2[pt_2];
-                    console.log("should not be empty :" + block.right);
-                    pt_2++;
-                }
-                //console.log("current group : label: "+result_array[i].label+", left: "+result_array[i].left+", right: "+result_array[i].right);
-            }
-            result_array.push({label:4, left:"", right:""}); //if there's any punctuation left, we create a block for it with a punctuation label
-            i++;
-            if (pt_1<punct_array_1.length) result_array[i].left = punct_array_1[pt_1];
-            if (pt_2<punct_array_2.length) result_array[i].right = punct_array_2[pt_2];
             return result_array;
         }
 
@@ -1344,7 +1153,11 @@
                 }
                 //need an await instruction here
                 change_to_loading_screen();
-                var levenshtein_dict = create_dict(ta1, ta2, start, alignment_options);
+
+                let wa1 = text_array_to_wordobj_array(ta1);
+                let wa2 = text_array_to_wordobj_array(ta2);
+
+                var levenshtein_dict = create_dict(ta1, ta2, wa1, wa2, start, alignment_options);
                 //now that we have the dict, we can do the pathmaking
                 console.log("starting pathfinding");
                 let path_time = Date.now();
