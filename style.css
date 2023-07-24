@@ -120,11 +120,6 @@ textarea {
     color: rgb(40,40,40);
 }
 
-.separators {
-    background-color: green;
-    color: white;
-}
-
 .changed {
     color: white;
     background-color: darkviolet;

@@ -216,10 +216,10 @@
         /**
          * A word in a dela_dict.
          * @typedef {Object} dela_word
-         * @property {!string[]} lemma
-         * @property {!string[]} types
-         * @property {?string[]} numgender - Grammatical number(s) and gender(s) if not a verb
-         * @property {?string[]} conjug - Grammatical conjugation(s) if a verb
+         * @property {!string[]} l
+         * @property {!string[]} t
+         * @property {?string[]} n - Grammatical number(s) and gender(s) if not a verb
+         * @property {?string[]} c - Grammatical cation(s) if a verb
         */
         /**
          * An object representing a word and its diverse forms
@@ -229,7 +229,7 @@
          * @property {string} NFD
          * @property {string} NFKD
          * @property {string} diacritics - NFKD + diacritics removed
-         * @property {string} in_dict - The form present in the dictionary
+         * @property {?string} in_dict - The form present in the dictionary
         */
 
         var left_panel = document.getElementById("left_panel");
@@ -312,10 +312,10 @@
         /**
          * Converts an array of words into an array of wordobjs corresponding to the words of the text in order.
          * @param {string[]} text_array
-         * @param {dela_dict} dictionary
+         * @param {dela_dict} DELA
          * @returns {wordobj[]}
         */
-        function text_array_to_wordobj_array(text_array, dictionary) {
+        function text_array_to_wordobj_array(text_array, DELA) {
             /** @type {wordobj[]} */
             let wordobj_array = new Array();
             for (var word of text_array) {
@@ -325,9 +325,10 @@
                 added_wordobj.NFD = added_wordobj.lowercase.normalize("NFD");
                 added_wordobj.NFKD = added_wordobj.lowercase.normalize("NFKD");
                 added_wordobj.diacritics = added_wordobj.NFKD.replace(/[\p{Sk}\p{Lm}\p{M}]+/gu, '');
-                let NFKC = word.normalize("NFKC")
-                if (NFKC in dictionary) added_wordobj.in_dict = NFKC;
-                else if (NFKC.toLowerCase in dictionary) added_wordobj.in_dict = NFKC.toLowerCase;
+                let NFKC = word.normalize("NFKC");
+                if (NFKC in DELA) added_wordobj.in_dict = NFKC;
+                else if (NFKC.toLowerCase() in DELA) added_wordobj.in_dict = NFKC.toLowerCase();
+                else added_wordobj.in_dict = null;
                 wordobj_array.push(added_wordobj);
             }
             return wordobj_array;
@@ -392,7 +393,7 @@
             lowercase : 0.02
             NFKD : 0.05
             diacritics : 0.1 
-        in dictionary :
+        in DELA :
             same lemma :
                 (0.14 is calculated after verbs)
                 both verbs :
@@ -428,60 +429,63 @@
          * Returns a similarity score (between 0 and 1) for the similarity between two wordobjs using multiple comparisons (scores are additioned if multiple comparisons are needed).
          * @param {wordobj} word1
          * @param {wordobj} word2
-         * @param {dela_dict} dictionary
+         * @param {dela_dict} DELA
          * @param {scoreOptions} options
          * @returns {number}
         */
-        function score(word1, word2, dictionary, options) {
+        function score(word1, word2, DELA) {
             if (word1.NFD == word2.NFD) return 0;
             if (word1.lowercase == word2.lowercase) return 0.02
             if (word1.NFKD == word2.NFKD) return 0.05;
             if (word1.diacritics == word2.diacritics) return 0.10;
-            if ("in_dict" in word1 && "in_dict" in word2) {
+            if ("in_dict" in word1 && "in_dict" in word2 && word1.in_dict != null && word2.in_dict != null) {
+                //console.log("comparing "+word1.in_dict+" & "+word2.in_dict);
+                //console.log(word1.l);
+                //console.log(word2.l);
                 //scores reserved for words that share a lemma : 0.14 to 0.26
-                if (dictionary[word1.in_dict].lemma.some(item => dictionary[word1.in_dict].lemma.includes(item))) { //the words have the same lemma
+                if (DELA[word1.in_dict].l.some(item => DELA[word2.in_dict].l.includes(item))) { //the words have the same lemma
                     //scores reserved for conjugation differences : 0.15 to 0.21
-                    if ((dictionary[word1.in_dict].types.some(item => item == "V")) && (dictionary[word2.in_dict].types.some(item => item == "V"))) {
+                    if ((DELA[word1.in_dict].t.some(item => item == "V")) && (DELA[word2.in_dict].t.some(item => item == "V"))) {
                         //the two words are conjugations of the same verb
                         let ret_value = 0.21; //score for difference in time, person/gender and number
-                        for (var conjug1 of dictionary[word1.in_dict].conjug) for (var conjug2 of dictionary[word2.in_dict].conjug) {
+                        for (var c1 of DELA[word1.in_dict].c) for (var c2 of DELA[word2.in_dict].c) {
 
                             //to make it faster, if you're sure of the values, automatically return if you find the lowest one
                             //you could also include the value of ret_value in the tests to skip the ones you don't need to test (and remove Math.min)
                             //this treats difference in gender as difference in grammatical person for now
 
-                            if (conjug1.slice(0,2) == conjug2.slice(0,2)) {
+                            if (c1.slice(0,2) == c2.slice(0,2)) {
                                 ret_value = Math.min(ret_value, 0.15); //difference in number but not in person or time
                                 continue;
                             }
-                            if (conjug1.slice(1) == conjug2.slice(1)) {
+                            if (c1.slice(1) == c2.slice(1)) {
                                 ret_value = Math.min(ret_value, 0.16); //difference in time but not in number or person
                                 continue;
                             } 
-                            if (conjug1.slice(0,1) == conjug2.slice(0,1)) {
-                                if (conjug1.slice(2) == conjug2.slice(2)) ret_value = Math.min(ret_value, 0.17); //difference in person but not in number or time
+                            if (c1.slice(0,1) == c2.slice(0,1)) {
+                                if (c1.slice(2) == c2.slice(2)) ret_value = Math.min(ret_value, 0.17); //difference in person but not in number or time
                                 else ret_value = Math.min(ret_value, 0.18); //difference in person and number but not in time
                                 continue;
                             }
-                            if (conjug1.slice(1,2) == conjug2.slice(1,2)) {
+                            if (c1.slice(1,2) == c2.slice(1,2)) {
                                 ret_value = Math.min(ret_value, 0.19); //difference in time and number
                                 continue;
                             }
-                            if (conjug1.slice(2) == conjug2.slice(2)) ret_value = Math.min(ret_value, 0.2); //difference in time and person
+                            if (c1.slice(2) == c2.slice(2)) ret_value = Math.min(ret_value, 0.2); //difference in time and person
                         }
                         return ret_value;
                     }
                     //scores reserved for gender and number differences when not verbs : 0.14 & 0.22 to 0.25
-                    if (dictionary[word1.in_dict].types.some(item => dictionary[word1.in_dict].types.includes(item))) {
-                        if ("numgender" in dictionary[word1.in_dict] && "numgender" in dictionary[word2.in_dict]) {
+                    if (DELA[word1.in_dict].t.some(item => DELA[word1.in_dict].t.includes(item))) {
+                        if ("n" in DELA[word1.in_dict] && "n" in DELA[word2.in_dict]) {
                             let ret_value = 0.24; //score for difference in gender and number
-                            for (var numgender1 of dictionary[word1.in_dict].numgender) for (var numgender2 of dictionary[word2.in_dict].numgender) {
-                                if (numgender1 == numgender2) return 0.14; //this means one word is a contraction of the other
-                                if (numgender1.slice(0,1) == numgender2.slice(0,1)) {
+                            for (var n1 of DELA[word1.in_dict].n) for (var n2 of DELA[word2.in_dict].n) {
+                                if (n1 == n2) return 0.14; //this means one word is a contraction of the other
+                                if (n1.slice(0,1) == n2.slice(0,1)) {
                                     ret_value = 0.22; //difference in gender only
                                     continue;
                                 }
-                                if (numgender1.slice(1) == numgender2.slice(1)) ret_value = 0.23; //difference in number only
+                                if (n1.slice(1) == n2.slice(1)) ret_value = 0.23; //difference in number only
                             }
                             return ret_value;
                         }
@@ -495,78 +499,78 @@
                 //our words don't share a lemma, scores from 0.27 to 1
 
                 //scores reserved for "CONJC" : 0.27
-                if ((dictionary[word1.in_dict].types.some(item => item == "CONJC")) && (dictionary[word2.in_dict].types.some(item => item == "CONJC"))) {
+                if ((DELA[word1.in_dict].t.some(item => item == "CONJC")) && (DELA[word2.in_dict].t.some(item => item == "CONJC"))) {
                     return 0.27;
                 }
                 //scores reserved for "CONJS" : 0.28
-                if ((dictionary[word1.in_dict].types.some(item => item == "CONJS")) && (dictionary[word2.in_dict].types.some(item => item == "CONJS"))) {
+                if ((DELA[word1.in_dict].t.some(item => item == "CONJS")) && (DELA[word2.in_dict].t.some(item => item == "CONJS"))) {
                     return 0.28;
                 }
                 //scores reserved for "DET" : 0.29
-                if ((dictionary[word1.in_dict].types.some(item => item == "DET")) && (dictionary[word2.in_dict].types.some(item => item == "DET"))) {
+                if ((DELA[word1.in_dict].t.some(item => item == "DET")) && (DELA[word2.in_dict].t.some(item => item == "DET"))) {
                     return 0.29;
                 }
                 //scores reserved for "PRO" : 0.3
-                if ((dictionary[word1.in_dict].types.some(item => item == "PRO")) && (dictionary[word2.in_dict].types.some(item => item == "PRO"))) {
+                if ((DELA[word1.in_dict].t.some(item => item == "PRO")) && (DELA[word2.in_dict].t.some(item => item == "PRO"))) {
                     return 0.3;
                 }
                 //scores reserved for "PREP" (all types) : 0.4 & 0.45
-                if ((dictionary[word1.in_dict].types.some(item => (/PREP/).test(item))) && (dictionary[word2.in_dict].types.some(item => (/PREP/).test(item)))) {
-                    for (var type1 of dictionary[word1.in_dict].types) for (var type2 of dictionary[word2.in_dict].types) {
+                if ((DELA[word1.in_dict].t.some(item => (/PREP/).test(item))) && (DELA[word2.in_dict].t.some(item => (/PREP/).test(item)))) {
+                    for (var type1 of DELA[word1.in_dict].t) for (var type2 of DELA[word2.in_dict].t) {
                         if ((/PREP/).test(type1) && (/PREP/).test(type2) && type1 == type2) return 0.4
                     }
                     // if both PREP but not the same type, higher value
                     return 0.45;
                 }
                 //scores reserved for "ADV" : 0.5
-                if ((dictionary[word1.in_dict].types.some(item => item == "ADV")) && (dictionary[word2.in_dict].types.some(item => item == "ADV"))) {
+                if ((DELA[word1.in_dict].t.some(item => item == "ADV")) && (DELA[word2.in_dict].t.some(item => item == "ADV"))) {
                     return 0.5;
                 }
-                //scores reserved for conjugations similarities between dissimilar verbs : 0.65, 0.7, 0.75, 0.8, 0.85 & 0.9
+                //scores reserved for conjugation similarities between dissimilar verbs : 0.65, 0.7, 0.75, 0.8, 0.85 & 0.9
                 // ONLY TAKING INTO ACCOUNT WORDS THAT SHARE A CONJUGATION FOR NOW (0.75)
-                if ((dictionary[word1.in_dict].types.some(item => item == "V")) && (dictionary[word2.in_dict].types.some(item => item == "V"))) { //the two words are verbs
+                if ((DELA[word1.in_dict].t.some(item => item == "V")) && (DELA[word2.in_dict].t.some(item => item == "V"))) { //the two words are verbs
                     //let ret_value = 0.9; //score for difference in time, person/gender and number
-                    for (var conjug1 of dictionary[word1.in_dict].conjug) for (var conjug2 of dictionary[word2.in_dict].conjug) {
-                        if (conjug1 == conjug2) return 0.75
-                        /*if (conjug1.slice(0,2) == conjug2.slice(0,2)) {
+                    for (var c1 of DELA[word1.in_dict].c) for (var c2 of DELA[word2.in_dict].c) {
+                        if (c1 == c2) return 0.75
+                        /*if (c1.slice(0,2) == c2.slice(0,2)) {
                             ret_value = Math.min(ret_value, 0.65); //difference in number but not in person or time
                             continue;
                         }
-                        if (conjug1.slice(1) == conjug2.slice(1)) {
+                        if (c1.slice(1) == c2.slice(1)) {
                             ret_value = Math.min(ret_value, 0.7); //difference in time but not in number or person
                             continue;
                         } 
-                        if (conjug1.slice(0,1) == conjug2.slice(0,1)) {
-                            if (conjug1.slice(2) == conjug2.slice(2)) ret_value = Math.min(ret_value, 0.17); //difference in person but not in number or time
+                        if (c1.slice(0,1) == c2.slice(0,1)) {
+                            if (c1.slice(2) == c2.slice(2)) ret_value = Math.min(ret_value, 0.17); //difference in person but not in number or time
                             else ret_value = Math.min(ret_value, 0.75); //difference in person and number but not in time
                             continue;
                         }
-                        if (conjug1.slice(1,2) == conjug2.slice(1,2)) {
+                        if (c1.slice(1,2) == c2.slice(1,2)) {
                             ret_value = Math.min(ret_value, 0.8); //difference in time and number
                             continue;
                         }
-                        if (conjug1.slice(2) == conjug2.slice(2)) ret_value = Math.min(ret_value, 0.85);*/ //difference in time and person
+                        if (c1.slice(2) == c2.slice(2)) ret_value = Math.min(ret_value, 0.85);*/ //difference in time and person
                     }
                     //return ret_value;
                 }
                 //scores reserved for number and gender similarities between different adjectives : 0.71, 0.76, 0.81, 0.86, 0.91
                 // ONLY TAKING INTO ACCOUNT ADJECTIVES THAT SHARE THE SAME NUMGENDER FOR NOW (0.8)
-                if ((dictionary[word1.in_dict].types.some(item => item == "ADJ")) && (dictionary[word2.in_dict].types.some(item => item == "ADJ"))) {
-                    if ("numgender" in dictionary[word1.in_dict] && "numgender" in dictionary[word2.in_dict]) {
+                if ((DELA[word1.in_dict].t.some(item => item == "ADJ")) && (DELA[word2.in_dict].t.some(item => item == "ADJ"))) {
+                    if ("n" in DELA[word1.in_dict] && "n" in DELA[word2.in_dict]) {
                         //let ret_value = 0.86; //score for difference in gender and number
-                        for (var numgender1 of dictionary[word1.in_dict].numgender) for (var numgender2 of dictionary[word2.in_dict].numgender) {
-                            if (numgender1 == numgender2) return 0.8;
-                            /*if (numgender1.slice(0,1) == numgender2.slice(0,1)) {
+                        for (var n1 of DELA[word1.in_dict].n) for (var n2 of DELA[word2.in_dict].n) {
+                            if (n1 == n2) return 0.8;
+                            /*if (n1.slice(0,1) == n2.slice(0,1)) {
                                 ret_value = 0.76; //difference in gender only
                                 continue;
                             }
-                            if (numgender1.slice(1) == numgender2.slice(1)) ret_value = 0.81; //difference in number only*/
+                            if (n1.slice(1) == n2.slice(1)) ret_value = 0.81; //difference in number only*/
                         }
                         return ret_value;
                     }
                     //return 0.91;
                 }
-                //after filtration of the dictionary, only "N" and "NPropre" subsist with "NPropre" always having "Hum"
+                //after filtration of the DELA, only "N" and "NPropre" subsist with "NPropre" always having "Hum"
                 //scores reserved for number, gender and category similarities between different nouns ("N" xor "NPropre"): 0.67, 0.72, 0.77, 0.82, 0.87, 0.92, 0.97
                 // NOT TAKING NOUNS INTO ACCOUNT FOR NOW
             }
@@ -755,18 +759,19 @@
          * @param {wordobj[]} text_array2 - The full wordobj array of text 2 (x axis)
          * @param {dict} dict - The dict needs to have its min_max array already filled
          * @param {alignmentOptions} alignment_options
+         * @param {dela_dict} DELA
         */
-        function calculate_and_propagate(wordobj_array_1, wordobj_array_2, dict, alignment_options) {
+        function calculate_and_propagate(wordobj_array_1, wordobj_array_2, dict, alignment_options, DELA) {
             for (var y=0;y<dict.min_max.length;y++) { //for every line of the matrix
                 //console.log("check min_max : "+dict.min_max[y].min+" - "+dict.min_max[y].max);
-                //if (dict.min_max[y].min = Infinity) dict.min_max[y] = {min: 0, max: text_array2.length - 1};
+                if (dict.min_max[y].min = Infinity) dict.min_max[y] = {min: 0, max: wordobj_array_2.length - 1};
                 for (var x = dict.min_max[y].min ; x <= dict.min_max[y].max ; x++) { //only in the existing cells
                     //console.log("cell "+y+" "+x)
                     //min(cost on the left + 1, cost on the right + 1, cost on the diagonal + 2 * current cost)
-                    dict[dkey(x, y)] = {unpropagated: score(wordobj_array_1[y], wordobj_array_2[x], {typecase: ((alignment_options.typecase) ? 0 : 0.1), diacritics: ((alignment_options.diacritics) ? 0 : 0.2), punctuation: !(alignment_options.punct)})};
-                    let left = (x == 0) ? y + 2 : (x == dict.min_max[y].min) ?  Infinity : dict[dkey(x-1, y)] + 1;
-                    let top  = (y == 0) ? x + 2 : (x > dict.min_max[y-1].max) ? Infinity : dict[dkey(x, y-1)] + 1;
-                    let diagonal = (y == 0 && x == 0) ? 0 : (y == 0) ? x + 1 : (x == 0) ? y + 1 : (x - 1 > dict.min_max[y-1].max || x - 1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1, y-1)] + 2 * (dict[dkey(x, y)].unrpopagated);
+                    dict[dkey(x, y)] = {unpropagated: score(wordobj_array_1[y], wordobj_array_2[x], DELA)};
+                    let left = (x == 0) ? y + 2 : (x == dict.min_max[y].min) ?  Infinity : dict[dkey(x-1, y)].propagated + 1;
+                    let top  = (y == 0) ? x + 2 : (x > dict.min_max[y-1].max) ? Infinity : dict[dkey(x, y-1)].propagated + 1;
+                    let diagonal = (y == 0 && x == 0) ? 0 : (y == 0) ? x + 1 : (x == 0) ? y + 1 : (x - 1 > dict.min_max[y-1].max || x - 1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1, y-1)].propagated + 2 * (dict[dkey(x, y)].unpropagated);
                     dict[dkey(x, y)].propagated = Math.min(left,top,diagonal);
                 }
             }
@@ -780,9 +785,10 @@
          * @param {wordobj[]} wordobj_array_2 - The full wordobj array of text 2 (x axis)
          * @param {?number} start_time - Start time of algorithm, set to null if no time should be displayed in console
          * @param {alignmentOptions} alignment_options
+         * @param {dela_dict} DELA
          * @returns {dict}
         */
-        function create_dict (text_array1, text_array2, wordobj_array_1, wordobj_array_2, alignment_options) {
+        function create_dict (text_array1, text_array2, wordobj_array_1, wordobj_array_2, start_time, alignment_options, DELA) {
             if (start_time!=null) var dict_time = Date.now();
             /** @type {dict} */
             var cost_dict = {min_max: new Array(text_array1.length)};
@@ -796,7 +802,7 @@
                 console.log("time taken to make the dict boundaries : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
                 dict_time = Date.now();
             }
-            calculate_and_propagate(wordobj_array_1, wordobj_array_2, cost_dict, alignment_options);
+            calculate_and_propagate(wordobj_array_1, wordobj_array_2, cost_dict, alignment_options, DELA);
             //cost_dict = propagate(cost_dict);
             if (start_time!=null) {
                 console.log("time taken to calculate & propagate : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
@@ -912,7 +918,7 @@
             if (alignment_options.punct) { //if punctuation isn't taken into account by the algorithm
                 let separators_array_1 = string_to_punct_and_separators(text1); //the first text's punctuation
                 let separators_array_2 = string_to_punct_and_separators(text2); //same for text 2
-                console.log(separators_array_1);
+                //console.log(separators_array_1);
                 if ((/[\p{P}]/u).test(text1.slice(0,1))) {
                     result_array.push({label: 4, left: separators_array_1[pt_1], right: ""});
                     pt_1++;
@@ -940,7 +946,7 @@
             else {
                 let separators_array_1 = string_to_separators_with_rest(text1);
                 let separators_array_2 = string_to_separators_with_rest(text2);
-                console.log(separators_array_1);
+                //console.log(separators_array_1);
                 if (separators_array_1[pt_1].length != 0) {
                     result_array.push({label: 4, left: separators_array_1[pt_1], right: ""});
                     pt_1++;
@@ -977,15 +983,16 @@
         */
         function int_to_type(typeint) {
             if (typeint==0) return "unchanged";
+            if (typeint<1) return "changed"
+            if (typeint==1) return "non_corresponding";
             if (typeint==2) return "removed";
             if (typeint==3) return "added";
             if (typeint==4) return "separators";
-            if (typeint==0.1) return "changed typecase";
+            /*if (typeint==0.1) return "changed typecase";
             if (typeint==0.2) return "changed diacritics";
             if (typeint==0.3) return "changed typecase diacritics";
             if (typeint==0.85) return "unchanged punct";
-            if (typeint==0.95) return "changed punct";
-            if (typeint==1) return "non_corresponding";
+            if (typeint==0.95) return "changed punct";*/
             return "changed";
         }
 
@@ -1089,6 +1096,17 @@
             
         }
 
+        /**
+         * Fetches the DELA JSON file and returns it.
+         * @returns {dela_dict}
+        */
+        async function load_dela() {
+            return fetch(new Request("https://maxb9f.github.io/COATL-LIGM/data/dela.txt.json", {
+                method: 'GET'
+            }))
+            .then(response => response.json());
+        }
+
         document.addEventListener("DOMContentLoaded", function(){
             console.log("DOM Content Loaded");
             //after the DOM has been loaded
@@ -1137,8 +1155,9 @@
             //we hide the result panels
             document.querySelectorAll(".panel").forEach(element => {element.style.display = "none";});
             //we add the click listener for the align button
-            document.querySelector("#align_button").addEventListener("click",function(){ //on click
+            document.querySelector("#align_button").addEventListener("click", async function(){ //on click
                 //remove visibility of button and interaction with textareas
+
                 let start = Date.now();
                 /** @type {string} */
                 var left_text = document.querySelector("#left_textarea").value.normalize("NFC"); //scans the left textarea
@@ -1154,17 +1173,21 @@
                 //need an await instruction here
                 change_to_loading_screen();
 
-                let wa1 = text_array_to_wordobj_array(ta1);
-                let wa2 = text_array_to_wordobj_array(ta2);
+                const DELA = await load_dela();
+                console.log(Object.keys(DELA).length);
 
-                var levenshtein_dict = create_dict(ta1, ta2, wa1, wa2, start, alignment_options);
+
+                let wa1 = text_array_to_wordobj_array(ta1, DELA);
+                let wa2 = text_array_to_wordobj_array(ta2, DELA);
+                console.log(wa1.length);
+                var levenshtein_dict = create_dict(ta1, ta2, wa1, wa2, start, alignment_options, DELA);
                 //now that we have the dict, we can do the pathmaking
                 console.log("starting pathfinding");
                 let path_time = Date.now();
                 var path_ta = make_out_path(levenshtein_dict, ta1, ta2, alignment_options);
                 console.log("time taken to make the path : " + (Date.now() - path_time) + " ms, total time : " + (Date.now() - start) + " ms");
                 path_ta.reverse();
-                console.log(path_ta);
+                //console.log(path_ta);
                 //then bring_text_back to fuse the groups and add punctuation
                 path_ta = alt_bring_text_back(path_ta, left_text, right_text, alignment_options);
                 //then make divs to create the divs inside of the panels

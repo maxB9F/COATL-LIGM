@@ -24,10 +24,10 @@
         /**
          * A word in the dictionary.
          * @typedef {Object} word
-         * @property {!string[]} lemma
-         * @property {!string[]} types
-         * @property {?string[]} numgender - Grammatical number(s) and gender(s) if not a verb
-         * @property {?string[]} conjug - Grammatical conjugation(s) if a verb
+         * @property {string[]} l - Lemmas
+         * @property {!string[]} t - Types
+         * @property {?string[]} n - Grammatical number(s) and gender(s) if not a verb
+         * @property {?string[]} c - Grammatical conjugation(s) if a verb
         */
 
         var openFile = function(event) {
@@ -72,24 +72,24 @@
                     let word = {};
                     let ar1 = line.split('.');
                     let ar2 = ar1[0].split(',');
-                    word.lemma = (ar2.length > 1 && ar2[1].length > 0) ? [ar2[1]] : [ar2[0]];
+                    word.l = (ar2.length > 1 && ar2[1].length > 0) ? [ar2[1]] : [ar2[0]];
                     let ar3 = ar1[1].split(':');
-                    word.types = ar3[0].split('+').filter(type => !((/z|Hum|N/).test(type)));
-                    if (word.types.length == 0) continue;
+                    word.t = ar3[0].split('+').filter(type => !((/^(z|Hum|N)/).test(type)));
+                    if (word.t.length == 0) continue;
                     if (ar3.length > 1) {
-                        if (word.types[0] == 'V') word.conjug = ar3.slice(1);
-                        else word.numgender = ar3.slice(1);
+                        if (word.t[0] == 'V') word.c = ar3.slice(1);
+                        else word.n = ar3.slice(1);
                     }
                     if (ar2[0] in return_object) { //fusion of two words in the dictionary spelt the same
-                        return_object[ar2[0]].lemma = [...new Set([...return_object[ar2[0]].lemma, ...word.lemma])];
-                        return_object[ar2[0]].types = [...new Set([...return_object[ar2[0]].types, ...word.types])];
-                        if ("numgender" in word) {
-                            if ("numgender" in return_object[ar2[0]]) { return_object[ar2[0]].numgender = [...new Set([...return_object[ar2[0]].numgender, ...word.numgender])];}
-                            else return_object[ar2[0]].numgender = word.numgender;
+                        return_object[ar2[0]].l = [...new Set([...return_object[ar2[0]].l, ...word.l])];
+                        return_object[ar2[0]].t = [...new Set([...return_object[ar2[0]].t, ...word.t])];
+                        if ("n" in word) {
+                            if ("n" in return_object[ar2[0]]) { return_object[ar2[0]].n = [...new Set([...return_object[ar2[0]].n, ...word.n])];}
+                            else return_object[ar2[0]].n = word.n;
                         }
-                        if ("conjug" in word) {
-                            if ("conjug" in return_object[ar2[0]]) { return_object[ar2[0]].conjug = [...new Set([...return_object[ar2[0]].conjug, ...word.conjug])];}
-                            else return_object[ar2[0]].conjug = word.conjug;
+                        if ("c" in word) {
+                            if ("c" in return_object[ar2[0]]) { return_object[ar2[0]].c = [...new Set([...return_object[ar2[0]].c, ...word.c])];}
+                            else return_object[ar2[0]].c = word.c;
                         }
                     }
                     else return_object[ar2[0]] = word;
