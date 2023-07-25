@@ -1,42 +1,25 @@
 refaire la fusion de blocs ? (pas dingue si on veut pouvoir se faire souligner simultanément les mots parallèles)
-ajouter fonctionnalités de comparaison supplémentaires
-passer à arrays d'objets pour plusieurs formes normalisées
-(implémenter DELAF & Compromise fr)
-    - diviser le texte avec regexp
-    - faire une array d'objets avec plusieurs formes normalisées (NKFD, diacritiques, lemmatisation, racinisation, etc.)
-    - utiliser ces arrays pour la comparaison (d'abord forme initiale, puis NKFD, etc.)
-    - refaire l'affichage en utilisant la forme initiale stockée
+ajouter fonctionnalités de comparaison supplémentaires ?
+ajouter affichage du nombre de modifications ?
+implémenter barre de chargement
+vérifier comment "externaliser" le calcul
+implémenter affichages selon type de modification
+ajouter fonctionnalités de téléchargement de l'outil et d'import/export de résultats
+ajouter version en Anglais (britannique de préférence)
 
 pour l'instant : pas de POS-tagging, "des" est considéré à la fois comme le pluriel de "un" et de "de"
 si du POS-tagging est fait à l'avenir : respecter le format du DELAF et mettre à jour le script créateur de .json
 
-pour dict : stocker valeur non propagée pour rendre le pathfinding plus rapide
-
-implémenter barre de chargement
-vérifier comment "externaliser" le calcul
-
-
-lemmatisation / racinisation / autres normalisations :
-    - algo de base de racinisation + article : Carry
-    - POS-tagger en Français et en js : fr-compromise https://github.com/nlp-compromise/fr-compromise
-    - POS-tagger + lemmatiseur + racinisateur + tokeniseur : nlp-js-tools-french https://github.com/bastienbot/nlp-js-tools-french/tree/master
-idée : utiliser un POS-tagger sur l'intégralité des deux textes juste après le multi-scale (complexité linéaire), puis utiliser le tag pour la fonction score ?
-permet : similarité de type, de lemme, de racinisateur
-permet également de personnaliser des affichages en français écrit si nécessaires (nombres écrits etc.)
-
-ajouter fonctionnalités de téléchargement de l'outil et d'import/export de résultats
-ajouter version en Anglais (britannique de préférence)
-
-optimisation de TOUT
 complexités pour l'instant (n la taille du texte 1 et m la taille du texte 2 en mots):
+    - score :                   beaucoup de tests et d'appels au DELA, quelques boucles quadratiques dans des tableaux (le plus souvent de taille 1 à 3 donc rapide)
     - create_dict :             n * créer la cellule de min_max + appel des 2 fonctions suivantes (en gros n * m * une constante)
     - make_dict_boundaries :    (n/min_block_size)*(m/min_block_size) * complexité de MinHash sur 2 sets de taille min_block_size + propagation
                                 pathmaking basique dans une matrice (n/min_block_size)*(m/min_block_size)
                                 boucle dans le parcours et création de 2 arrays pour les min & max
-    - calculate_and_propagate : n*m * le temps nécessaire pour faire le score d'une case + choper les trois autres cases et faire la comparaison
+    - calculate_and_propagate : n * m * le temps nécessaire pour faire le score d'une case + choper les trois autres cases et faire la comparaison
     - make_out_path :           au pire des cas (n + m) * beaucoup de tests et d'accès au dict 
-                                dans le meilleur des cas max(n,m) * bcp de tests et appel à la fonction score (avancée)
+                                dans le meilleur des cas max(n,m) * beaucoup de tests et d'accès au dict 
     - alt_bring_text_back :     (n + m) * une petite constante
     - make_spans :              pareil
 
-possibilités d'optimisation : pê le pathfinding, le multi-scale (qui est déjà bcp mieux)
+possibilités d'optimisation : le multi-scale (qui est déjà bcp mieux)
