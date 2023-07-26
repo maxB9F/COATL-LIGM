@@ -138,3 +138,7 @@ textarea {
 #reset_button, #export_button {
     display: none;
 }
+
+#loader_div, #loader_div > * {
+    display: none;
+}

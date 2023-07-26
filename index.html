@@ -237,6 +237,16 @@
         var right_panel = document.getElementById("right_panel");
         
         /**
+         * Displays a span inside the loader div.
+         * @param {string} id - As CSS selector
+        */
+        async function display_step(id) {
+            document.querySelector(id).style.display = "initial";
+            console.log("display "+id);
+            return;
+        }
+
+        /**
          * Converts number coordinates into a string key for the dictionary, used to lower memory usage at the sacrifice of speed
          * @param {number} x
          * @param {number} y
@@ -797,7 +807,8 @@
          * @param {dela_dict} DELA
          * @returns {dict}
         */
-        function create_dict (text_array1, text_array2, wordobj_array_1, wordobj_array_2, start_time, alignment_options, DELA) {
+        async function create_dict (text_array1, text_array2, wordobj_array_1, wordobj_array_2, start_time, alignment_options, DELA) {
+            await display_step("#creating");
             if (start_time!=null) var dict_time = Date.now();
             /** @type {dict} */
             var cost_dict = {min_max: new Array(text_array1.length)};
@@ -811,6 +822,7 @@
                 console.log("time taken to make the dict boundaries : "+(Date.now()-dict_time)+" ms, total time : "+(Date.now()-start_time)+" ms");
                 dict_time = Date.now();
             }
+            await display_step("#filling");
             calculate_and_propagate(wordobj_array_1, wordobj_array_2, cost_dict, alignment_options, DELA);
             //cost_dict = propagate(cost_dict);
             if (start_time!=null) {
@@ -828,7 +840,8 @@
          * @param {alignmentOptions} alignment_options
          * @returns {wordblock[]}
         */
-        function make_out_path(dict,text_array1,text_array2, alignment_options) {   
+        async function make_out_path(dict,text_array1,text_array2, alignment_options) {   
+            await display_step("#pathfinding");
             let result_array = new Array();
             let x = text_array2.length-1; //we start in the bottom right corner
             let y = text_array1.length-1;
@@ -919,7 +932,8 @@
          * @param {alignmentOptions} alignment_options
          * @returns {wordblock[]}
         */
-        function alt_bring_text_back(text_array, text1, text2, alignment_options) {
+        async function alt_bring_text_back(text_array, text1, text2, alignment_options) {
+            await display_step("#postpro");
             /** @type {wordblock[]} */
             let result_array = new Array(0);
             var pt_1 = 0;
@@ -1019,7 +1033,8 @@
          * Creates spans in the result display panels.
          * @param {wordblock[]} text_array - The path
         */
-        function make_spans(text_array) {
+        async function make_spans(text_array) {
+            await display_step("#resdisp");
             let span_id = 0;
             for (var block of text_array) {
                 span_id++;
@@ -1040,6 +1055,7 @@
                     document.getElementById("right_panel").appendChild(new_span_right);
                 }
             }
+            return;
         }
 
         /**
@@ -1053,6 +1069,8 @@
             document.querySelectorAll(".checkbox_container").forEach(element => {
                 element.style.display = "none"
             });
+            document.querySelector("#loader_div").style.display = "block";
+            await display_step("#parsing");
             /*let loader = document.querySelector("#loader")
             loader.style.display = "block";
             var op = 0.1;  // initial opacity
@@ -1065,6 +1083,7 @@
                 op += op * 0.04;
             }, 10);*/
             console.log("changed to loading screen");
+            return;
         }
 
         /**
@@ -1084,6 +1103,7 @@
             delete op;
             delete timer;
             loader.style.display = "none";*/
+            document.querySelector("#loader_div").style.display = "none";
             document.querySelectorAll(".panel").forEach(element => {
                 element.style.display = "block";
             });
@@ -1183,22 +1203,22 @@
                 const DELA = await load_dela();
                 console.log(Object.keys(DELA).length);
 
-
+                await display_step("#pretreat");
                 let wa1 = text_array_to_wordobj_array(ta1, DELA);
                 let wa2 = text_array_to_wordobj_array(ta2, DELA);
                 console.log(wa1.length);
-                var levenshtein_dict = create_dict(ta1, ta2, wa1, wa2, start, alignment_options, DELA);
+                var levenshtein_dict = await create_dict(ta1, ta2, wa1, wa2, start, alignment_options, DELA);
                 //now that we have the dict, we can do the pathmaking
                 console.log("starting pathfinding");
                 let path_time = Date.now();
-                var path_ta = make_out_path(levenshtein_dict, ta1, ta2, alignment_options);
+                var path_ta = await make_out_path(levenshtein_dict, ta1, ta2, alignment_options);
                 console.log("time taken to make the path : " + (Date.now() - path_time) + " ms, total time : " + (Date.now() - start) + " ms");
                 path_ta.reverse();
                 //console.log(path_ta);
                 //then bring_text_back to fuse the groups and add punctuation
-                path_ta = alt_bring_text_back(path_ta, left_text, right_text, alignment_options);
+                path_ta = await alt_bring_text_back(path_ta, left_text, right_text, alignment_options);
                 //then make divs to create the divs inside of the panels
-                make_spans(path_ta);
+                await make_spans(path_ta);
                 //then we have to change page setup
                 change_to_result_screen();
                 console.log("result shown, total time : " + (Date.now() - start) + " ms");
@@ -1227,6 +1247,21 @@
     <button id="popup_closer_button">Close</button>
     <div class="box" id="outerbox">
         <div class="box" id="innerbox">
+            <div id="loader_div">
+                <span id="parsing">Parsing dictionary</span>
+                <span id="pretreat">
+                    Pre-treating texts</span>
+                <span id="creating">
+                    Creating Levenshtein matrix</span>
+                <span id="filling">
+                    Filling Levenshtein matrix</span>
+                <span id="pathfinding">
+                    Finding optimal path</span>
+                <span id="postpro">
+                    Processing results</span>
+                <span id="resdisp">
+                    Creating results display</span>
+            </div>
             <textarea autocomplete="off" minlength="1" spellcheck="false" id="left_textarea" placeholder="La première version du texte"></textarea>
             <textarea autocomplete="off" minlength="1" spellcheck="false" id="right_textarea" placeholder="La seconde version du texte"></textarea>
             <div class="panel" id="left_panel"></div>
