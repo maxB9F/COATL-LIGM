@@ -1045,7 +1045,7 @@
         /**
          * Changes the page setup to display the loading screen.
         */
-        function change_to_loading_screen() {
+        async function change_to_loading_screen() {
             document.querySelectorAll("textarea").forEach(element => {
                 element.style.display = "none";
             });
@@ -1054,7 +1054,7 @@
                 element.style.display = "none"
             });
             /*let loader = document.querySelector("#loader")
-            //loader.style.display = "block";
+            loader.style.display = "block";
             var op = 0.1;  // initial opacity
             var timer = setInterval(function () {
                 if (op >= 1){
@@ -1063,9 +1063,8 @@
                 loader.style.opacity = op;
                 loader.style.filter = 'alpha(opacity=' + op * 100 + ")";
                 op += op * 0.04;
-            }, 10);
-            delete op;
-            delete timer;*/
+            }, 10);*/
+            console.log("changed to loading screen");
         }
 
         /**
@@ -1179,8 +1178,7 @@
                 if (ta1.length==0 || ta2.length==0) {
                     return;
                 }
-                //need an await instruction here
-                change_to_loading_screen();
+                await change_to_loading_screen();
 
                 const DELA = await load_dela();
                 console.log(Object.keys(DELA).length);
