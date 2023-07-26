@@ -222,8 +222,9 @@
          * @property {?string[]} c - Grammatical cation(s) if a verb
         */
         /**
-         * An object representing a word and its diverse forms
+         * An object representing a word and its diverse forms or a punctuation string.
          * @typedef {Object} wordobj
+         * @property {string} punct - The punctuation string if there is one (then, all other properties empty).
          * @property {string} initial - The initial form as is in the input
          * @property {string} lowercase
          * @property {string} NFD
@@ -434,6 +435,14 @@
          * @returns {number}
         */
         function score(word1, word2, DELA) {
+            if ("punct" in word1) {
+                if ("punct" in word2) {
+                    if (word1.punct.normalize("NFD") == word2.punct.normalize("NFD")) {} //if same punctuation
+                    //else both punctuation but different
+                }
+                // else only one of them punctuation
+            }
+            else if ("punct" in word2) {} //only one of them punctuation
             if (word1.NFD == word2.NFD) return 0;
             if (word1.lowercase == word2.lowercase) return 0.02
             if (word1.NFKD == word2.NFKD) return 0.05;

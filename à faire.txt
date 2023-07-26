@@ -3,7 +3,7 @@ ajouter fonctionnalités de comparaison supplémentaires ?
 ajouter affichage du nombre de modifications ?
 implémenter barre de chargement
 vérifier comment "externaliser" le calcul
-implémenter affichages selon type de modification
+implémenter affichages selon type de modification (réflechir à comment bien afficher)
 ajouter fonctionnalités de téléchargement de l'outil et d'import/export de résultats
 ajouter version en Anglais (britannique de préférence)
 

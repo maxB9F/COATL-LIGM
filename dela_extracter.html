@@ -60,13 +60,13 @@
                 // JSON maker script : text input should be uncompressed dictionary from Unitex GramLab, it was made for DELA (french)
                 
                 let text_array = text.split(/[\r\n]+/).filter(line => line.length > 0);
-                console.log(text_array.length);
+                console.log("nombre d'entrées initial : "+text_array.length);
                 //we remove coumpounds with whitespaces, apostrophes and dashes :
                 text_array = text_array.filter(line => !((/[\s'-]+/).test(line)));
-                console.log(text_array.length);
+                console.log("nombre d'entrées après premier filtre : "+text_array.length);
                 //we remove 3rd layer :
                 text_array = text_array.filter(line => !((/z3/).test(line)));
-                console.log(text_array.length);
+                console.log("nombre d'entrées après deuxième filtre : "+text_array.length);
                 var return_object = {};
                 for (var line of text_array) {
                     let word = {};
@@ -94,7 +94,7 @@
                     }
                     else return_object[ar2[0]] = word;
                 }
-                console.log(Object.keys(return_object).length);
+                console.log("nombre d'entrées finale : "+Object.keys(return_object).length);
                 download(document.getElementById("name_storer").innerText + ".json", JSON.stringify(return_object));
             });
         });
