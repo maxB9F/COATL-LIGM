@@ -323,19 +323,34 @@
          * @property {boolean} typecase - True if typecase differences should be considered
         */
         /**
-         * Options pertaining to the score of two blocks.
-         * @typedef {Object} scoreOptions - Leave out the parameters that shouldn't be calculated (or set to null)
-         * @property {number} typecase - The score added to words that are the same after typecase normalisation
-         * @property {number} diacritics - The score added to words that are the same after diacritics normalisation
-         * @property {number[]} scale - The scale for the Levenshtein score function. 
-        */
-        /**
          * A cell on the path of the make_dict_boundaries function.
          * @typedef {object} multi_scale_cell
          * @property {number} x_coord
          * @property {number} y_coord
          * @property {boolean} top_right
          * @property {boolean} bottom_left
+        */
+        /**
+         * The DELA_fr dictionary as JSON.
+         * @typedef {Object} dela_dict - Contains dela_word objects with dictionary entry strings as keys.
+        */
+        /**
+         * A word in a dela_dict.
+         * @typedef {Object} dela_word
+         * @property {!string[]} l
+         * @property {!string[]} t
+         * @property {?string[]} n - Grammatical number(s) and gender(s) if not a verb
+         * @property {?string[]} c - Grammatical cation(s) if a verb
+        */
+        /**
+         * An object representing a word and its diverse forms or a punctuation string.
+         * @typedef {Object} wordobj
+         * @property {string} initial - The initial form as is in the input
+         * @property {string} lowercase
+         * @property {string} NFD
+         * @property {string} NFKD
+         * @property {string} diacritics - NFKD + diacritics removed
+         * @property {string} in_dict - The form in the dictionary if it exists
         */
         var left_panel = document.getElementById("left_panel");
         var right_panel = document.getElementById("right_panel");
@@ -375,6 +390,32 @@
         */
         function string_interlace(text) {
             return text.split(/([^\p{Script=Latin}]+)/u).filter(block => block.length > 0); 
+        }
+
+        /**
+         * Converts an array of words into an array of wordobjs corresponding to the words of the text in order.
+         * @param {string[]} text_array
+         * @param {dela_dict} DELA
+         * @returns {wordobj[]}
+        */
+        function text_array_to_wordobj_array(text_array, DELA) {
+            /** @type {wordobj[]} */
+            let wordobj_array = new Array();
+            for (var word of text_array) {
+                /** type {wordobj} */
+                let added_wordobj = {
+                    initial: word,
+                    lowercase: word.toLowerCase()         
+                };
+                added_wordobj.NFD = added_wordobj.lowercase.normalize("NFD");
+                added_wordobj.NFKD = added_wordobj.lowercase.normalize("NFKD");
+                added_wordobj.diacritics = added_wordobj.NFKD.replace(/[\p{Sk}\p{Lm}\p{M}]+/gu, '');
+                let NFKC = word.normalize("NFKC");
+                if (DELA != null && NFKC in DELA) added_wordobj.in_dict = NFKC;
+                else if (DELA != null && NFKC.toLowerCase() in DELA) added_wordobj.in_dict = NFKC.toLowerCase();
+                wordobj_array.push(added_wordobj);
+            }
+            return wordobj_array;
         }
 
         /**
@@ -422,18 +463,16 @@
          * Returns a similarity score (between 0 and 1) for the similarity between two strings (considered words) using multiple comparisons (scores are additioned if multiple comparisons are needed).
          * @param {string} word1
          * @param {string} word2
-         * @param {scoreOptions} options
+         * @param {alignmentOptions} alignment_options
          * @returns {number}
         */
-        function score(word1, word2, options) {
-            if (word1 == word2) return 0;
-            if ((("typecase" in options) && (options.typecase != null)) && (word1.toLowerCase() == word2.toLowerCase())) return options.typecase;
-            if (("diacritics" in options) && (options.diacritics != null)) {
-                if (word1.normalize("NFD") == word2.normalize("NFD")) return options.diacritics;
-                if ((("typecase" in options) && (options.typecase != null)) && (word1.toLowerCase().normalize("NFD") == word2.toLowerCase().normalize("NFD"))) return options.typecase + options.diacritics;
-                //normalisation NKFD normalise également les ligatures et formes anciennes de lettres (s long par ex.), à considérer
-            }
-            if (("scale" in options) && (options.scale != null)) return levenshtein_score(options.scale[1], options.scale[0], word1.toLowerCase(), word2.toLowerCase());
+        function score(word1, word2, alignment_options) {
+            if (word1.NFD == word2.NFD) return 0;
+            if (word1.lowercase == word2.lowercase) return (alignment_options.typecase) ? 0 : 0.02;
+            if ((alignment_options.diacritics) && (word1.diacritics == word2.diacritics)) return 0;
+            if (word1.NFKD == word2.NFKD) return 0.05;
+            if (word1.diacritics == word2.diacritics) return 0.1;
+            // return levenshtein_score(1, 0.8, word1.NFKD, word2.NFKD);
             return 1;
         }
 
@@ -523,18 +562,22 @@
 
         /**
          * Calculates the Levenshtein distance matrix in a dict.
-         * @param {string[]} text_array1 - The full word array of text 1 (y axis)
-         * @param {string[]} text_array2 - The full word array of text 2 (x axis)
+         * @param {wordobj[]} text_array1 - The full wordobj array of text 1 (y axis)
+         * @param {wordobj[]} text_array2 - The full wordobj array of text 2 (x axis)
          * @param {dict} dict - The dict needs to have its min_max array already filled
          * @param {alignmentOptions} alignment_options
+         * @param {dela_dict} DELA
         */
-        function calculate_and_propagate(text_array1, text_array2, dict, alignment_options) {
-            for (var y = 0; y < dict.min_max.length; y++) for (var x = dict.min_max[y].min; x <= dict.min_max[y].max; x++) {
-                dict[dkey(x, y)] = {unpropagated: score(text_array1[y], text_array2[x], {typecase: ((alignment_options.typecase) ? 0 : 0.1), diacritics: ((alignment_options.diacritics) ? 0 : 0.2)})};
-                let left = (x == 0) ? y + 2 : (x == dict.min_max[y].min) ?  Infinity : dict[dkey(x-1, y)].propagated + 1;
-                let top  = (y == 0) ? x + 2 : (x > dict.min_max[y-1].max) ? Infinity : dict[dkey(x, y-1)].propagated + 1;
-                let diagonal = (y == 0 && x == 0) ? 0 : (y == 0) ? x + 1 : (x == 0) ? y + 1 : (x - 1 > dict.min_max[y-1].max || x - 1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1, y-1)].propagated + 2 * (dict[dkey(x, y)].unpropagated);
-                dict[dkey(x, y)].propagated = Math.min(left,top,diagonal);
+        function calculate_and_propagate(text_array1, text_array2, dict, alignment_options, DELA) {
+            for (var y = 0; y < dict.min_max.length; y++) {
+                if (dict.min_max[y].min = Infinity) dict.min_max[y] = {min: 0, max: text_array2.length - 1};
+                for (var x = dict.min_max[y].min; x <= dict.min_max[y].max; x++) {
+                    dict[dkey(x, y)] = {unpropagated: score(text_array1[y], text_array2[x], alignment_options)};
+                    let left = (x == 0) ? y + 2 : (x == dict.min_max[y].min) ?  Infinity : dict[dkey(x-1, y)].propagated + 1;
+                    let top  = (y == 0) ? x + 2 : (x > dict.min_max[y-1].max) ? Infinity : dict[dkey(x, y-1)].propagated + 1;
+                    let diagonal = (y == 0 && x == 0) ? 0 : (y == 0) ? x + 1 : (x == 0) ? y + 1 : (x - 1 > dict.min_max[y-1].max || x - 1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1, y-1)].propagated + 2 * (dict[dkey(x, y)].unpropagated);
+                    dict[dkey(x, y)].propagated = Math.min(left,top,diagonal);
+                }
             }
         }
 
@@ -542,14 +585,17 @@
          * Creates a dictionary to store a Levensthein distance matrix.
          * @param {string[]} text_array1 - Array of words
          * @param {string[]} text_array2 - Array of words
+         * @param {wordobj[]} wordobj_array_1 - The full wordobj array of text 1 (y axis)
+         * @param {wordobj[]} wordobj_array_2 - The full wordobj array of text 2 (x axis)
          * @param {alignmentOptions} alignment_options
+         * @param {dela_dict} DELA
          * @returns {dict}
         */
-        function create_dict (text_array1, text_array2, alignment_options) {
+        function create_dict (text_array1, text_array2, wordobj_array_1, wordobj_array_2, alignment_options, DELA) {
             var cost_dict = {min_max: new Array(text_array1.length)};
             for (var i = 0; i < text_array1.length; i++) cost_dict.min_max[i] = {min: Infinity, max: -Infinity};
             make_dict_boundaries(text_array1, text_array2, cost_dict, 50, 160000);
-            calculate_and_propagate(text_array1, text_array2, cost_dict, alignment_options);
+            calculate_and_propagate(wordobj_array_1, wordobj_array_2, cost_dict, alignment_options, DELA);
             return cost_dict;
         }
 
@@ -561,11 +607,10 @@
          * @param {alignmentOptions} alignment_options
          * @returns {wordblock[]}
         */
-        function make_out_path(dict, text_array1,text_array2, alignment_options) {   
+        function make_out_path(dict, text_array1, text_array2, alignment_options) {   
             let result_array = new Array();
             let x = text_array2.length - 1;
             let y = text_array1.length - 1;
-            let score_options = {typecase: ((alignment_options.typecase) ? 0 : 0.1), diacritics:((alignment_options.diacritics) ? 0 : 0.2), scale: [0, 0.9]};
             while (x >= -1 && y >= -1) {
                 if (x <= -1) {
                     if (y <= -1) break;
@@ -663,9 +708,9 @@
             if (typeint==2) return "removed";
             if (typeint==3) return "added";
             if (typeint==4) return "punct";
-            if (typeint==0.1) return "changed typecase";
-            if (typeint==0.2) return "changed diacritics";
-            if (typeint==0.3) return "changed typecase diacritics";
+            if (typeint==0.02) return "changed typecase";
+            if (typeint==0.05) return "changed NFKD";
+            if (typeint==0.1) return "changed diacritics";
             if (typeint==1) return "non_corresponding"
             return "changed";
         }
@@ -740,12 +785,23 @@
             });
         }
 
+        /**
+         * Fetches the DELA JSON file and returns it.
+         * @async
+         * @returns {dela_dict}
+        */
+        async function load_dela() {
+            return fetch(new Request("https://maxb9f.github.io/COATL-LIGM/data/dela.txt.json", {method: 'GET'}))
+            .then(response => response.json());
+        }
+
         document.addEventListener("DOMContentLoaded", function(){
             /** @type {alignmentOptions} */
             var alignment_options = {
                 typecase: false,
                 diacritics: false,
-                punct: true
+                punct: true,
+                dela: false
             };
             document.querySelector("#punct_check").addEventListener("change", (event) => {
                 if (event.currentTarget.checked) alignment_options.punct = true;
@@ -759,6 +815,10 @@
                 if (event.currentTarget.checked) alignment_options.diacritics = true;
                 else alignment_options.diacritics = false;
             });
+            document.querySelector("#dela_check").addEventListener("change", (event) => {
+                if (event.currentTarget.checked) alignment_options.dela = true;
+                else alignment_options.dela = false;
+            });
             document.querySelectorAll(".panel").forEach(element => {element.style.display = "none";});
             document.querySelector("#align_button").addEventListener("click",function(){
                 /** @type {string} */
@@ -769,7 +829,11 @@
                 var ta2 = (alignment_options.punct) ? string_to_words(right_text) : string_interlace(right_text);
                 if (ta1.length == 0 || ta2.length == 0) return;
                 change_to_loading_screen();
-                var levenshtein_dict = create_dict(ta1, ta2, alignment_options);
+                // const DELA = (alignment_options.dela) ? await load_dela() : null;
+                const DELA = null;
+                var wa1 = text_array_to_wordobj_array(ta1, DELA);
+                var wa2 = text_array_to_wordobj_array(ta2, DELA);
+                var levenshtein_dict = create_dict(ta1, ta2, wa1, wa2, alignment_options, DELA);
                 var path_ta = make_out_path(levenshtein_dict, ta1, ta2, alignment_options);
                 path_ta.reverse();
                 path_ta = alt_bring_text_back(path_ta, left_text, right_text, alignment_options);
@@ -804,9 +868,13 @@
             <div class="panel" id="right_panel"></div>
         </div>
         <div class="box" id="button_box">
-            <div class="checkbox_container">
+            <!--<div class="checkbox_container">
                 <input type="checkbox" id="punct_check" checked>
                 <label for="punct_check">Ignorer la ponctuation et les séparateurs</label>
+            </div>-->
+            <div class="checkbox_container">
+                <input type="checkbox" id="dela_check">
+                <label for="dela_check">Utiliser le dictionnaire DELAF (connexion internet nécessitée).</label>
             </div>
             <div class="checkbox_container">
                 <input type="checkbox" id="typecase_check">
