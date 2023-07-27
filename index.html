@@ -798,8 +798,8 @@
             new_document.body.appendChild(new_document.importNode(document.querySelector("header"), true));
             var new_outer = new_document.importNode(document.querySelector("#outerbox"));
             var new_inner = new_document.importNode(document.querySelector("#innerbox"));
-            var new_left = new_document.importNode(left_panel, true);
-            var new_right = new_document.importNode(right_panel, true);
+            var new_left = new_document.importNode(document.querySelector("#left_panel"), true);
+            var new_right = new_document.importNode(document.querySelector("#right_panel"), true);
             new_inner.appendChild(new_left);
             new_inner.appendChild(new_right);
             new_outer.appendChild(new_inner);
