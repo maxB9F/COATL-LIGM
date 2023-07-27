@@ -836,7 +836,9 @@
                     document.getElementById("r_"+id).style.textDecoration = "none";
                 });
             });
-            document.querySelector("#export_button").addEventListener("click", function() {
+            let export_button = document.querySelector("#export_button");
+            export_button.style.display = "initial";
+            export_button.addEventListener("click", function() {
                 download_results();
             });
         }
