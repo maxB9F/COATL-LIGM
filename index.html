@@ -849,6 +849,7 @@
             var new_document = document.implementation.createHTMLDocument("Résultats");
             new_document.documentElement.lang = document.documentElement.lang;
             new_document.body.appendChild(new_document.importNode(document.querySelector("style")));
+            new_document.querySelector("style").innerHTML = document.querySelector("style").innerHTML;
             new_document.body.appendChild(new_document.importNode(document.querySelector("header"), true));
             var new_outer = new_document.importNode(document.querySelector("#outerbox"));
             var new_inner = new_document.importNode(document.querySelector("#innerbox"));
@@ -858,7 +859,7 @@
             new_inner.appendChild(new_right);
             new_outer.appendChild(new_inner);
             var new_script = new_document.createElement("script");
-            new_script.innerHTML = "document.addEventListener(\"DOMContentLoaded\", function() {document.querySelectorAll(\".unchanged:not(punct), .changed:not(punct)\").forEach(e => {var id = e.id.split('_')[1];e.addEventListener(\"click\", function() {scroll_to_id(id);});e.addEventListener(\"mouseenter\", function() {document.getElementById(\"l_\"+id).style.textDecoration = \"solid underline\";document.getElementById(\"r_\"+id).style.textDecoration = \"solid underline\";});e.addEventListener(\"mouseleave\", function() {document.getElementById(\"l_\"+id).style.textDecoration = \"none\";document.getElementById(\"r_\"+id).style.textDecoration = \"none\";});});});";
+            new_script.innerHTML = "function scroll_to_id(block_id) {let offsetHeight = document.querySelector(\"#left_panel\").clientHeight / 2;document.querySelector(\"#left_panel\").scrollTop = document.querySelector(\"#l_\"+block_id).offsetTop - offsetHeight;document.querySelector(\"#right_panel\").scrollTop = document.querySelector(\"#r_\"+block_id).offsetTop - offsetHeight;}document.addEventListener(\"DOMContentLoaded\", function() {document.querySelectorAll(\".unchanged:not(punct), .changed:not(punct)\").forEach(e => {var id = e.id.split('_')[1];e.addEventListener(\"click\", function() {scroll_to_id(id);});e.addEventListener(\"mouseenter\", function() {document.getElementById(\"l_\"+id).style.textDecoration = \"solid underline\";document.getElementById(\"r_\"+id).style.textDecoration = \"solid underline\";});e.addEventListener(\"mouseleave\", function() {document.getElementById(\"l_\"+id).style.textDecoration = \"none\";document.getElementById(\"r_\"+id).style.textDecoration = \"none\";});});});";
             new_document.body.appendChild(new_outer);
             new_document.body.appendChild(new_script);
             new_document.querySelectorAll(".text_part").forEach(element => {element.style = document.getElementById(element.id).style;});
