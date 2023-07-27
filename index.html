@@ -475,14 +475,68 @@
             if ("in_dict" in word1 && "in_dict" in word2) {
                 if (DELA[word1.in_dict].l.some(item => DELA[word2.in_dict].l.includes(item))) {
                     if ((DELA[word1.in_dict].t.some(item => item == "V")) && (DELA[word2.in_dict].t.some(item => item == "V"))) {
-                        //conjugations
+                        let ret_value = 0.21;
+                        for (var c1 of DELA[word1.in_dict].c) for (var c2 of DELA[word2.in_dict].c) {
+                            if (c1.slice(0,2) == c2.slice(0,2)) return 0.15; //difference only in number
+                            if (c1.slice(1) == c2.slice(1)) {
+                                ret_value = Math.min(ret_value, 0.16); //difference in time but not in number or person
+                                continue;
+                            } 
+                            if (c1.slice(0,1) == c2.slice(0,1)) {
+                                if (c1.slice(2) == c2.slice(2)) ret_value = Math.min(ret_value, 0.17); //difference in person but not in number or time
+                                else ret_value = Math.min(ret_value, 0.18); //difference in person and number but not in time
+                                continue;
+                            }
+                            if (c1.slice(1,2) == c2.slice(1,2)) {
+                                ret_value = Math.min(ret_value, 0.19); //difference in time and number
+                                continue;
+                            }
+                            if (c1.slice(2) == c2.slice(2)) ret_value = Math.min(ret_value, 0.2); //difference in time and person
+                        }
+                        return ret_value;
                     }
-                    //type, number and gender difference scores
+                    if (DELA[word1.in_dict].t.some(item => DELA[word1.in_dict].t.includes(item))) {
+                        if ("n" in DELA[word1.in_dict] && "n" in DELA[word2.in_dict]) {
+                            let ret_value = 0.24; //score for difference in gender and number
+                            for (var n1 of DELA[word1.in_dict].n) for (var n2 of DELA[word2.in_dict].n) {
+                                if (n1 == n2) return 0.14; //this means one word is a contraction of the other
+                                if (n1.slice(0,1) == n2.slice(0,1)) {
+                                    ret_value = Math.min(ret_value, 0.22); //difference in gender only
+                                    continue;
+                                }
+                                if (n1.slice(1) == n2.slice(1)) ret_value = Math.min(ret_value, 0.23); //difference in number only
+                            }
+                            return ret_value;
+                        }
+                        //same lemma, not verbs, but no numgender associated
+                        return 0.25;
+                    }
+                    //only same lemma
+                    return 0.3;
                 }
-                //type, number and gender similarity scores
+                if ((DELA[word1.in_dict].t.some(item => item == "CONJC")) && (DELA[word2.in_dict].t.some(item => item == "CONJC"))) {
+                    return 0.55;
+                }
+                if ((DELA[word1.in_dict].t.some(item => item == "CONJS")) && (DELA[word2.in_dict].t.some(item => item == "CONJS"))) {
+                    return 0.56;
+                }
+                if ((DELA[word1.in_dict].t.some(item => item == "DET")) && (DELA[word2.in_dict].t.some(item => item == "DET"))) {
+                    return 0.57;
+                }
+                if ((DELA[word1.in_dict].t.some(item => item == "PRO")) && (DELA[word2.in_dict].t.some(item => item == "PRO"))) {
+                    return 0.58;
+                }
+                if ((DELA[word1.in_dict].t.some(item => (/PREP/).test(item))) && (DELA[word2.in_dict].t.some(item => (/PREP/).test(item)))) {
+                    for (var type1 of DELA[word1.in_dict].t) for (var type2 of DELA[word2.in_dict].t) {
+                        if ((/PREP/).test(type1) && (/PREP/).test(type2) && type1 == type2) return 0.59
+                    }
+                    return 0.6;
+                }
+                if ((DELA[word1.in_dict].t.some(item => item == "ADV")) && (DELA[word2.in_dict].t.some(item => item == "ADV"))) {
+                    return 0.7;
+                }
             }
-            // return levenshtein_score(1, 0.8, word1.NFKD, word2.NFKD);
-            return 1;
+            return levenshtein_score(1, 0.8, word1.NFKD, word2.NFKD);
         }
 
         /**
