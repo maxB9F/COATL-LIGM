@@ -731,12 +731,18 @@
         */
         function make_spans(text_array) {
             let span_id = 0;
-            for (var block of text_array) {
+            for (var i=0; i<text_array.length; i++) {
+                let block = text_array[i];
                 span_id++;
                 let classes = int_to_type(block.label).split(" ");
                 if (block.label != 3) {
                     let new_span_left = document.createElement("span");
                     new_span_left.classList.add("text_part", ...classes);
+                    if (block.label == 4) {
+                        let prev = (i == 0) ? true : (text_array[i-1].label == 2);
+                        let next = (i == text_array.length - 1) ? true : (text_array[i+1].label == 2);
+                        if (prev && next) new_span_left.classList.add("removed"); 
+                    }
                     new_span_left.id = "l_" + span_id;
                     new_span_left.textContent = block.left;
                     document.getElementById("left_panel").appendChild(new_span_left);
@@ -744,6 +750,11 @@
                 if (block.label != 2) {
                     let new_span_right = document.createElement("span");
                     new_span_right.classList.add("text_part", ...classes);
+                    if (block.label == 4) {
+                        let prev = (i == 0) ? true : (text_array[i-1].label == 3);
+                        let next = (i == text_array.length - 1) ? true : (text_array[i+1].label == 3);
+                        if (prev && next) new_span_left.classList.add("added"); 
+                    }
                     new_span_right.id = "r_" + span_id;
                     new_span_right.textContent = block.right;
                     document.getElementById("right_panel").appendChild(new_span_right);
