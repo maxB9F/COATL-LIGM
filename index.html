@@ -441,7 +441,7 @@
          * @returns {number}
         */
         function levenshtein_score(a, b, word1, word2) {
-            if (word1.length + word2.length < 6) return 1;
+            if (word1.length + word2.length < 10) return 1;
             let word1_array = word1.split('');
             let word2_array = word2.split('');
             let matrix = new Array(word1_array.length+1);
