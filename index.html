@@ -454,8 +454,8 @@
                 } 
             }
             let result = matrix[word1_array.length][word2_array.length];
-            let len_short = Math.min(word1_array.length, word2_array.length);
-            let return_value = (result > len_short) ? 1 : (a - b) * (result / len_short) + b;
+            let len_diff = Math.abs(word1_array.length - word2_array.length);
+            let return_value = (result > len_short) ? 1 : (a - b) * ((result - 1) / Math.min(len_diff, 1)) + b;
             return return_value;
         }
 
@@ -535,8 +535,14 @@
                 if ((DELA[word1.in_dict].t.some(item => item == "ADV")) && (DELA[word2.in_dict].t.some(item => item == "ADV"))) {
                     return 0.7;
                 }
+                if ((DELA[word1.in_dict].t.some(item => item == "V")) && (DELA[word2.in_dict].t.some(item => item == "V"))) {
+                    for (var c1 of DELA[word1.in_dict].c) for (var c2 of DELA[word2.in_dict].c) if (c1 == c2) return 0.75;
+                }
+                if ((DELA[word1.in_dict].t.some(item => item == "A" || item == "N")) && (DELA[word2.in_dict].t.some(item => item == "A" || item == "N"))) {
+                    for (var n1 of DELA[word1.in_dict].n) for (var n2 of DELA[word2.in_dict].n) if (n1 == n2) return 0.8;
+                }
             }
-            return levenshtein_score(1, 0.8, word1.NFKD, word2.NFKD);
+            return levenshtein_score(1, 0.81, word1.NFKD, word2.NFKD);
         }
 
         /**
@@ -986,7 +992,7 @@
             </div>-->
             <div class="checkbox_container">
                 <input type="checkbox" id="dela_check">
-                <label for="dela_check">Utiliser le dictionnaire DELAF (30 Mo de téléchargement).</label>
+                <label for="dela_check">Utiliser le dictionnaire DELAF (36,2 Mo de téléchargement).</label>
             </div>
             <div class="checkbox_container">
                 <input type="checkbox" id="typecase_check">
