@@ -915,13 +915,24 @@
         }
 
         document.addEventListener("DOMContentLoaded", function(){
+            /** @type {dela_dict} */
+            var DELA_string = localStorage.getItem("dela");
+            if (DELA_string != null) document.getElementById("dela_check_label").innerText = "Utiliser le dictionnaire DELAF (déjà téléchargé)"
             /** @type {alignmentOptions} */
-            var alignment_options = {
-                typecase: false,
-                diacritics: false,
-                punct: true,
-                dela: false
-            };
+            var alignment_options = JSON.parse(localStorage.getItem("options"));
+            if (alignment_options == null) {
+                alignment_options = {
+                    typecase: false,
+                    diacritics: false,
+                    punct: true,
+                    dela: false
+                };
+                localStorage.setItem("options", JSON.stringify(alignment_options));
+            }
+            document.getElementById("dela_check").checked = alignment_options.dela;
+            document.getElementById("diacritics_check").checked = alignment_options.diacritics;
+            document.getElementById("typecase_check").checked = alignment_options.typecase;
+
             /*document.querySelector("#punct_check").addEventListener("change", (event) => {
                 if (event.currentTarget.checked) alignment_options.punct = true;
                 else alignment_options.punct = false;
@@ -948,7 +959,8 @@
                 var ta2 = (alignment_options.punct) ? string_to_words(right_text) : string_interlace(right_text);
                 if (ta1.length == 0 || ta2.length == 0) return;
                 change_to_loading_screen();
-                const DELA = (alignment_options.dela) ? await load_dela() : null;
+                const DELA = (alignment_options.dela) ? ((DELA_string != null) ? JSON.parse(DELA_string) : await load_dela()) : null;
+                if (DELA_string == null && DELA != null) localStorage.setItem("dela", JSON.stringify(DELA));
                 var wa1 = text_array_to_wordobj_array(ta1, DELA);
                 var wa2 = text_array_to_wordobj_array(ta2, DELA);
                 var levenshtein_dict = create_dict(ta1, ta2, wa1, wa2, alignment_options, DELA);
@@ -957,7 +969,7 @@
                 path_ta = alt_bring_text_back(path_ta, left_text, right_text, alignment_options);
                 make_spans(path_ta);
                 change_to_result_screen();
-            }, {once: true});
+            });
         }, {once: true});
     </script>
 </head>
@@ -992,7 +1004,7 @@
             </div>-->
             <div class="checkbox_container">
                 <input type="checkbox" id="dela_check">
-                <label for="dela_check">Utiliser le dictionnaire DELAF (36,2 Mo de téléchargement).</label>
+                <label id="dela_check_label" for="dela_check">Utiliser le dictionnaire DELAF (36,2 Mo à télécharger)</label>
             </div>
             <div class="checkbox_container">
                 <input type="checkbox" id="typecase_check">
