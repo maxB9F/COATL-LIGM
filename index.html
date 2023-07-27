@@ -794,7 +794,6 @@
         function download_results() {
             var new_document = document.implementation.createHTMLDocument("Résultats");
             new_document.documentElement.lang = document.documentElement.lang;
-            new_document.adoptedStyleSheets = [...document.adoptedStyleSheets];
             new_document.body.appendChild(new_document.importNode(document.querySelector("header"), true));
             var new_outer = new_document.importNode(document.querySelector("#outerbox"));
             var new_inner = new_document.importNode(document.querySelector("#innerbox"));
@@ -807,9 +806,9 @@
             new_script.innerHTML = "document.addEventListener(\"DOMContentLoaded\", function() {document.querySelectorAll(\".unchanged:not(punct), .changed:not(punct)\").forEach(e => {var id = e.id.split('_')[1];e.addEventListener(\"click\", function() {scroll_to_id(id);});e.addEventListener(\"mouseenter\", function() {document.getElementById(\"l_\"+id).style.textDecoration = \"solid underline\";document.getElementById(\"r_\"+id).style.textDecoration = \"solid underline\";});e.addEventListener(\"mouseleave\", function() {document.getElementById(\"l_\"+id).style.textDecoration = \"none\";document.getElementById(\"r_\"+id).style.textDecoration = \"none\";});});});";
             new_document.body.appendChild(new_outer);
             new_document.body.appendChild(new_script);
-            new_document.querySelectorAll(".text_part").forEach(element => {element.style = document.getElementById(element.id).style;});
+            new_document.querySelectorAll("*").forEach(element => {element.style = document.getElementById(element.id).style;});
             var downloader = document.createElement("a");
-            downloader.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(new_document.documentElement.outerHTML));
+            downloader.setAttribute("href", "data:text/html;charset=utf-8," + encodeURIComponent(new_document.documentElement.outerHTML));
             downloader.setAttribute("download", "Résultats");
             downloader.style.display = "none";
             document.body.appendChild(downloader);
