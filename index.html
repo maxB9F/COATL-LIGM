@@ -154,7 +154,7 @@
             background-color: #2f2fff;
         }
 
-        #reset_button, #export_button {
+        #export_button {
             display: none;
         }
     </style>
@@ -472,6 +472,15 @@
             if ((alignment_options.diacritics) && (word1.diacritics == word2.diacritics)) return 0;
             if (word1.NFKD == word2.NFKD) return 0.05;
             if (word1.diacritics == word2.diacritics) return 0.1;
+            if ("in_dict" in word1 && "in_dict" in word2) {
+                if (DELA[word1.in_dict].l.some(item => DELA[word2.in_dict].l.includes(item))) {
+                    if ((DELA[word1.in_dict].t.some(item => item == "V")) && (DELA[word2.in_dict].t.some(item => item == "V"))) {
+                        //conjugations
+                    }
+                    //type, number and gender difference scores
+                }
+                //type, number and gender similarity scores
+            }
             // return levenshtein_score(1, 0.8, word1.NFKD, word2.NFKD);
             return 1;
         }
@@ -780,6 +789,35 @@
         }
 
         /**
+         * Downloads the results figuring inside the .panel divs into a new HTML document.
+        */
+        function download_results() {
+            var new_document = document.implementation.createHTMLDocument("Résultats");
+            new_document.documentElement.lang = document.documentElement.lang;
+            new_document.adoptedStyleSheets = [...document.adoptedStyleSheets];
+            new_document.body.appendChild(new_document.importNode(document.querySelector("header"), true));
+            var new_outer = new_document.importNode(document.querySelector("#outerbox"));
+            var new_inner = new_document.importNode(document.querySelector("#innerbox"));
+            var new_left = new_document.importNode(left_panel, true);
+            var new_right = new_document.importNode(right_panel, true);
+            new_inner.appendChild(new_left);
+            new_inner.appendChild(new_right);
+            new_outer.appendChild(new_inner);
+            var new_script = new_document.createElement("script");
+            new_script.innerHTML = "document.addEventListener(\"DOMContentLoaded\", function() {document.querySelectorAll(\".unchanged:not(punct), .changed:not(punct)\").forEach(e => {var id = e.id.split('_')[1];e.addEventListener(\"click\", function() {scroll_to_id(id);});e.addEventListener(\"mouseenter\", function() {document.getElementById(\"l_\"+id).style.textDecoration = \"solid underline\";document.getElementById(\"r_\"+id).style.textDecoration = \"solid underline\";});e.addEventListener(\"mouseleave\", function() {document.getElementById(\"l_\"+id).style.textDecoration = \"none\";document.getElementById(\"r_\"+id).style.textDecoration = \"none\";});});});";
+            new_document.body.appendChild(new_outer);
+            new_document.body.appendChild(new_script);
+            new_document.querySelectorAll(".text_part").forEach(element => {element.style = document.getElementById(element.id).style;});
+            var downloader = document.createElement("a");
+            downloader.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(new_document.documentElement.outerHTML));
+            downloader.setAttribute("download", "Résultats");
+            downloader.style.display = "none";
+            document.body.appendChild(downloader);
+            downloader.click();
+            document.body.removeChild(downloader);
+        }
+
+        /**
          * Changes the page setup to display the results.
         */
         function change_to_result_screen() {
@@ -797,6 +835,9 @@
                     document.getElementById("l_"+id).style.textDecoration = "none";
                     document.getElementById("r_"+id).style.textDecoration = "none";
                 });
+            });
+            document.querySelector("#export_button").addEventListener("click", function() {
+                download_results();
             });
         }
 
@@ -854,8 +895,8 @@
                 path_ta = alt_bring_text_back(path_ta, left_text, right_text, alignment_options);
                 make_spans(path_ta);
                 change_to_result_screen();
-            });
-        });
+            }, {once: true});
+        }, {once: true});
     </script>
 </head>
 <body>
@@ -900,7 +941,6 @@
                 <label for="diacritics_check">Ignorer les différences de signes diacritiques</label>
             </div>
             <button id="align_button"  type="button">Align</button>
-            <button id="reset_button"  type="button">Reset</button>
             <button id="export_button" type="button">Export</button>
         </div>
     </div>
