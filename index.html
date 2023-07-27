@@ -146,12 +146,12 @@
 
         .removed, #left_panel > .non_corresponding {
             color: white;
-            background-color: red;
+            background-color: #eb0000;
         }
 
         .added, #right_panel > .non_corresponding {
             color: white;
-            background-color: blue;
+            background-color: #2f2fff;
         }
 
         #reset_button, #export_button {
@@ -739,10 +739,12 @@
                     let new_span_left = document.createElement("span");
                     new_span_left.classList.add("text_part", ...classes);
                     if (block.label == 4) {
-                        let prev = (i == 0) ? true : (text_array[i-1].label == 2);
-                        let next = (i == text_array.length - 1) ? true : (text_array[i+1].label == 2);
+                        let prev = (i == 0) ? true : (text_array[i-1].label == 2 || text_array[i-1].label == 1);
+                        let next = (i == text_array.length - 1) ? true : (text_array[i+1].label == 2 || text_array[i+1].label == 1);
                         if (prev && next) new_span_left.classList.add("removed"); 
                     }
+                    else if (block.label < 1) new_span_left.style.backgroundColor = "rgba(148, 0, 211, " + block.label + ")";
+                    if (block.label < 0.74) new_span_left.style.color = "black";
                     new_span_left.id = "l_" + span_id;
                     new_span_left.textContent = block.left;
                     document.getElementById("left_panel").appendChild(new_span_left);
@@ -751,10 +753,12 @@
                     let new_span_right = document.createElement("span");
                     new_span_right.classList.add("text_part", ...classes);
                     if (block.label == 4) {
-                        let prev = (i == 0) ? true : (text_array[i-1].label == 3);
-                        let next = (i == text_array.length - 1) ? true : (text_array[i+1].label == 3);
+                        let prev = (i == 0) ? true : (text_array[i-1].label == 3 || text_array[i-1].label == 1);
+                        let next = (i == text_array.length - 1) ? true : (text_array[i+1].label == 3 || text_array[i+1].label == 1);
                         if (prev && next) new_span_left.classList.add("added"); 
                     }
+                    else if (block.label < 1) new_span_left.style.backgroundColor = "rgba(148, 0, 211, " + block.label + ")";
+                    if (block.label < 0.74) new_span_left.style.color = "black";
                     new_span_right.id = "r_" + span_id;
                     new_span_right.textContent = block.right;
                     document.getElementById("right_panel").appendChild(new_span_right);
