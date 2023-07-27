@@ -755,10 +755,10 @@
                     if (block.label == 4) {
                         let prev = (i == 0) ? true : (text_array[i-1].label == 3 || text_array[i-1].label == 1);
                         let next = (i == text_array.length - 1) ? true : (text_array[i+1].label == 3 || text_array[i+1].label == 1);
-                        if (prev && next) new_span_left.classList.add("added"); 
+                        if (prev && next) new_span_right.classList.add("added"); 
                     }
-                    else if (block.label < 1) new_span_left.style.backgroundColor = "rgba(148, 0, 211, " + block.label + ")";
-                    if (block.label < 0.74) new_span_left.style.color = "black";
+                    else if (block.label < 1) new_span_right.style.backgroundColor = "rgba(148, 0, 211, " + block.label + ")";
+                    if (block.label < 0.74) new_span_right.style.color = "black";
                     new_span_right.id = "r_" + span_id;
                     new_span_right.textContent = block.right;
                     document.getElementById("right_panel").appendChild(new_span_right);
@@ -889,7 +889,7 @@
             </div>-->
             <div class="checkbox_container">
                 <input type="checkbox" id="dela_check">
-                <label for="dela_check">Utiliser le dictionnaire DELAF (connexion internet nécessitée).</label>
+                <label for="dela_check">Utiliser le dictionnaire DELAF (30 Mo de téléchargement).</label>
             </div>
             <div class="checkbox_container">
                 <input type="checkbox" id="typecase_check">
