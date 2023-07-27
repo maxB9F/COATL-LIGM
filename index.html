@@ -455,7 +455,7 @@
             }
             let result = matrix[word1_array.length][word2_array.length];
             let len_diff = Math.abs(word1_array.length - word2_array.length);
-            let return_value = (result > len_short) ? 1 : (a - b) * ((result - 1) / Math.min(len_diff, 1)) + b;
+            let return_value = (result > len_diff) ? 1 : (a - b) * ((result - 1) / Math.min(len_diff, 1)) + b;
             return return_value;
         }
 
