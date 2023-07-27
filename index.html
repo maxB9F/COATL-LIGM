@@ -466,7 +466,7 @@
          * @param {alignmentOptions} alignment_options
          * @returns {number}
         */
-        function score(word1, word2, alignment_options) {
+        function score(word1, word2, alignment_options, DELA) {
             if (word1.NFD == word2.NFD) return 0;
             if (word1.lowercase == word2.lowercase) return (alignment_options.typecase) ? 0 : 0.02;
             if ((alignment_options.diacritics) && (word1.diacritics == word2.diacritics)) return 0;
@@ -635,7 +635,7 @@
             for (var y = 0; y < dict.min_max.length; y++) {
                 if (dict.min_max[y].min = Infinity) dict.min_max[y] = {min: 0, max: text_array2.length - 1};
                 for (var x = dict.min_max[y].min; x <= dict.min_max[y].max; x++) {
-                    dict[dkey(x, y)] = {unpropagated: score(text_array1[y], text_array2[x], alignment_options)};
+                    dict[dkey(x, y)] = {unpropagated: score(text_array1[y], text_array2[x], alignment_options, DELA)};
                     let left = (x == 0) ? y + 2 : (x == dict.min_max[y].min) ?  Infinity : dict[dkey(x-1, y)].propagated + 1;
                     let top  = (y == 0) ? x + 2 : (x > dict.min_max[y-1].max) ? Infinity : dict[dkey(x, y-1)].propagated + 1;
                     let diagonal = (y == 0 && x == 0) ? 0 : (y == 0) ? x + 1 : (x == 0) ? y + 1 : (x - 1 > dict.min_max[y-1].max || x - 1 < dict.min_max[y-1].min) ? Infinity : dict[dkey(x-1, y-1)].propagated + 2 * (dict[dkey(x, y)].unpropagated);
