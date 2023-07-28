@@ -450,12 +450,13 @@
                 for (var j = 0; j < word2_array.length + 1; j++) {
                     if (j==0) matrix[i][0] = i;
                     else if (i==0) matrix[0][j] = j;
-                    else matrix[i][j] = Math.min(matrix[i][j-1] + 1, matrix[i-1][j] + 1, ((word1_array[i-1] == word2_array[j-1]) ? 0 : 2) + matrix[i-1][j-1]);
+                    else matrix[i][j] = Math.min(matrix[i][j-1] + 1, matrix[i-1][j] + 1, ((word1_array[i-1] == word2_array[j-1]) ? 0 : 1) + matrix[i-1][j-1]);
                 } 
             }
             let result = matrix[word1_array.length][word2_array.length];
             let len_diff = Math.abs(word1_array.length - word2_array.length);
-            let return_value = (result > len_diff) ? 1 : (a - b) * ((result - 1) / Math.min(len_diff, 1)) + b;
+            let len_short = Math.min(word1_array.length, word2_array.length);
+            let return_value = (a - b) * ((result - 1) / len_short) + b;
             return return_value;
         }
 
@@ -542,7 +543,7 @@
                     for (var n1 of DELA[word1.in_dict].n) for (var n2 of DELA[word2.in_dict].n) if (n1 == n2) return 0.8;
                 }
             }
-            return levenshtein_score(1, 0.81, word1.NFKD, word2.NFKD);
+            return levenshtein_score(2, 0.81, word1.NFKD, word2.NFKD);
         }
 
         /**
@@ -780,7 +781,7 @@
             if (typeint==0.02) return "changed typecase";
             if (typeint==0.05) return "changed NFKD";
             if (typeint==0.1) return "changed diacritics";
-            if (typeint==1) return "non_corresponding"
+            if (typeint >= 1) return "non_corresponding"
             return "changed";
         }
 
@@ -868,7 +869,7 @@
             new_script.innerHTML = "function scroll_to_id(block_id) {let offsetHeight = document.querySelector(\"#left_panel\").clientHeight / 2;document.querySelector(\"#left_panel\").scrollTop = document.querySelector(\"#l_\"+block_id).offsetTop - offsetHeight;document.querySelector(\"#right_panel\").scrollTop = document.querySelector(\"#r_\"+block_id).offsetTop - offsetHeight;}document.addEventListener(\"DOMContentLoaded\", function() {document.querySelectorAll(\".unchanged:not(punct), .changed:not(punct)\").forEach(e => {var id = e.id.split('_')[1];e.addEventListener(\"click\", function() {scroll_to_id(id);});e.addEventListener(\"mouseenter\", function() {document.getElementById(\"l_\"+id).style.textDecoration = \"solid underline\";document.getElementById(\"r_\"+id).style.textDecoration = \"solid underline\";});e.addEventListener(\"mouseleave\", function() {document.getElementById(\"l_\"+id).style.textDecoration = \"none\";document.getElementById(\"r_\"+id).style.textDecoration = \"none\";});});});";
             new_document.body.appendChild(new_outer);
             new_document.body.appendChild(new_script);
-            new_document.querySelectorAll(".text_part").forEach(element => {element.style = document.getElementById(element.id).style;});
+            new_document.querySelectorAll(".text_part").forEach(element => {element.style = document.getElementById(element.id).style;}); //doesn't copy opacity and text colour
             var downloader = document.createElement("a");
             downloader.setAttribute("href", "data:text/html;charset=utf-8," + encodeURIComponent(new_document.documentElement.outerHTML));
             downloader.setAttribute("download", "Résultats");
@@ -916,8 +917,8 @@
 
         document.addEventListener("DOMContentLoaded", function(){
             /** @type {dela_dict} */
-            var DELA_string = localStorage.getItem("dela");
-            if (DELA_string != null) document.getElementById("dela_check_label").innerText = "Utiliser le dictionnaire DELAF (déjà téléchargé)"
+            //var DELA_string = localStorage.getItem("dela");
+            //if (DELA_string != null) document.getElementById("dela_check_label").innerText = "Utiliser le dictionnaire DELAF (déjà téléchargé)"
             /** @type {alignmentOptions} */
             var alignment_options = JSON.parse(localStorage.getItem("options"));
             if (alignment_options == null) {
@@ -959,8 +960,9 @@
                 var ta2 = (alignment_options.punct) ? string_to_words(right_text) : string_interlace(right_text);
                 if (ta1.length == 0 || ta2.length == 0) return;
                 change_to_loading_screen();
-                const DELA = (alignment_options.dela) ? ((DELA_string != null) ? JSON.parse(DELA_string) : await load_dela()) : null;
-                if (DELA_string == null && DELA != null) localStorage.setItem("dela", JSON.stringify(DELA));
+                //const DELA = (alignment_options.dela) ? ((DELA_string != null) ? JSON.parse(DELA_string) : await load_dela()) : null;
+                const DELA = (alignment_options.dela) ? await load_dela() : null;
+                //if (DELA_string == null && DELA != null) localStorage.setItem("dela", JSON.stringify(DELA));
                 var wa1 = text_array_to_wordobj_array(ta1, DELA);
                 var wa2 = text_array_to_wordobj_array(ta2, DELA);
                 var levenshtein_dict = create_dict(ta1, ta2, wa1, wa2, alignment_options, DELA);
