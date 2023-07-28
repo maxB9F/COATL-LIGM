@@ -118,36 +118,6 @@
             align-self: stretch;
         }
 
-        #progress_bar {
-            position: relative;
-            display: none;
-            width: 100%;
-            background-color: lightgrey;
-            height: 2em;
-        }
-
-        #progress_amount {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 0%;
-            height: 2em;
-            background-color: #2f2fff;
-        }
-
-        #progress_text {
-            position: absolute;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            right: 0;
-            text-align: center;
-            line-height: 2em;
-            color: white;
-            mix-blend-mode: difference;
-            filter: grayscale(1) contrast(9);
-        }
-
         #button_box {
             flex-flow: row wrap;
             flex: 0 0 auto;
@@ -386,27 +356,6 @@
         var right_panel = document.getElementById("right_panel");
         
         /**
-         * Updates the progress bar text to the given string.
-         * @param {string} text
-         * @async
-        */
-        async function update_progress_text(text) {
-            document.querySelector("#progress_text").innerText = text;
-            console.log(text);
-            return;
-        }
-
-        /**
-         * Updates the progress bar amount.
-         * @param {number} amount - between 0 and 1
-         * @async
-        */
-        async function update_progress_amount(amount) {
-            document.querySelector("#progress_amount").style.width = toString(amount*100)+"%";
-            return;
-        }
-
-        /**
          * Converts number coordinates into a string key for the dictionary, used to lower memory usage at the sacrifice of speed
          * @param {number} x
          * @param {number} y
@@ -445,19 +394,14 @@
 
         /**
          * Converts an array of words into an array of wordobjs corresponding to the words of the text in order.
-         * @async
          * @param {string[]} text_array
          * @param {dela_dict} DELA
          * @returns {wordobj[]}
         */
-        async function text_array_to_wordobj_array(text_array, DELA) {
-            await update_progress_text("Parsing text ...");
-            let div = text_array.length;
+        function text_array_to_wordobj_array(text_array, DELA) {
             /** @type {wordobj[]} */
             let wordobj_array = new Array();
-            for (var i = 0; i < div; i++) {
-                await update_progress_amount(i/div);
-                let word = text_array[i];
+            for (var word of text_array) {
                 /** type {wordobj} */
                 let added_wordobj = {
                     initial: word,
@@ -603,14 +547,13 @@
 
         /**
          * Divides the matrix in blocks and sets their boundaries as min and max for every line of the dict.
-         * @async
          * @param {string[]} text_array1 - The full word array of text 1
          * @param {string[]} text_array2 - The full word array of text 2
          * @param {dict} dict - The dict to be modified
          * @param {number} min_block_size - The size of the blocks
          * @param {number} max_matrix_size - The max size of the matrix (in number of cells)
         */
-        async function make_dict_boundaries(text_array1, text_array2, dict, min_block_size, max_matrix_size) {
+        function make_dict_boundaries(text_array1, text_array2, dict, min_block_size, max_matrix_size) {
             let div_amount_x = Math.floor(text_array2.length / min_block_size);
             let div_amount_y = Math.floor(text_array1.length / min_block_size);
             if (div_amount_x * div_amount_y > max_matrix_size) {
@@ -618,22 +561,12 @@
                 div_amount_y = Math.floor(Math.sqrt(max_matrix_size));
             }
             if (div_amount_x > 2 && div_amount_y > 2) {
-                await update_progress_text("Dividing texts into blocks ...");
-                await update_progress_amount(0);
                 let lvl2array1 = new Array(div_amount_y);
                 let lvl2array2 = new Array(div_amount_x);
                 let block_size_1 = text_array1.length / div_amount_y;
                 let block_size_2 = text_array2.length / div_amount_x;
-                for (var j = 0; j < div_amount_x; j++) {
-                    await update_progress_amount(j / (div_amount_x * 2));
-                    lvl2array2[j] = text_array2.slice(Math.floor(j * block_size_2), Math.floor((j+1) * block_size_2));
-                }
-                for (var j = 0; j < div_amount_y; j++) {
-                    await update_progress_amount(0.5 + j / (div_amount_y * 2))
-                    lvl2array1[j] = text_array1.slice(Math.floor(j * block_size_1), Math.floor((j+1) * block_size_1));
-                }
-                await update_progress_text("Calculating Jaccard distances ...");
-                await update_progress_amount(0);
+                for (var j = 0; j < div_amount_x; j++) lvl2array2[j] = text_array2.slice(Math.floor(j * block_size_2), Math.floor((j+1) * block_size_2));
+                for (var j = 0; j < div_amount_y; j++) lvl2array1[j] = text_array1.slice(Math.floor(j * block_size_1), Math.floor((j+1) * block_size_1));
                 /** @type {matrix} */
                 let matrix = new Array(div_amount_y+1);
                 for (var i = 0; i < div_amount_y + 1; i++) {
@@ -642,12 +575,9 @@
                 }
                 for (var i = 1; i < div_amount_x + 1; i++) matrix[0][i] = i;
                 for (var i = 1; i < div_amount_y + 1; i++) for (var j = 1; j < div_amount_x + 1; j++) {
-                    await update_progress_amount((i / (div_amount_y + 1)) * (j / (div_amount_x + 1)));
                     matrix[i][j] = ((i != j) && (matrix[j] != null) && (matrix[j][i] != null)) ? matrix[j][i] : jaccard_distance(lvl2array1[i-1], lvl2array2[j-1]);
                     matrix[i][j] = Math.min(matrix[i-1][j] + 1, matrix[i][j-1] + 1, matrix[i-1][j-1] + matrix[i][j]);
                 }
-                await update_progress_text("Finding multi-scale path ...");
-                await update_progress_amount(0);
                 /**@type {multi_scale_cell[]}*/
                 let path = new Array();
                 let x = div_amount_x;
@@ -685,8 +615,6 @@
                         else y--;
                     }
                 }
-                await update_progress_text("Updating matrix according to multi-scale path ...");
-                await update_progress_amount(0);
                 let min_max_per_block = new Array(lvl2array2.length);
                 min_max_per_block[0] = [0, lvl2array2[0].length - 1];
                 for (var i = 1; i < lvl2array2.length; i++) min_max_per_block[i] = [min_max_per_block[i-1][1] + 1, min_max_per_block[i-1][1] + lvl2array2[i].length];
@@ -694,27 +622,23 @@
                 absolute_y_per_block[0] = [0, lvl2array1[0].length - 1];
                 for (var i = 1; i < lvl2array1.length; i++) absolute_y_per_block[i] = [absolute_y_per_block[i-1][1] + 1, absolute_y_per_block[i-1][1] + lvl2array1[i].length];
                 for (var coords of path) for (var i = absolute_y_per_block[coords.y_coord][0]; i <= absolute_y_per_block[coords.y_coord][1]; i++) {
-                    await update_progress_amount(i / (text_array1.length - 1));
                     dict.min_max[i].min = Math.min(dict.min_max[i].min, min_max_per_block[coords.x_coord][0]);
                     dict.min_max[i].max = Math.max(dict.min_max[i].max, min_max_per_block[coords.x_coord][1]);
                 }
-                return;
+
             }
         }
 
         /**
          * Calculates the Levenshtein distance matrix in a dict.
-         * @async
          * @param {wordobj[]} text_array1 - The full wordobj array of text 1 (y axis)
          * @param {wordobj[]} text_array2 - The full wordobj array of text 2 (x axis)
          * @param {dict} dict - The dict needs to have its min_max array already filled
          * @param {alignmentOptions} alignment_options
          * @param {dela_dict} DELA
         */
-        async function calculate_and_propagate(text_array1, text_array2, dict, alignment_options, DELA) {
-            await update_progress_text("Calculating matrix scores ...");
+        function calculate_and_propagate(text_array1, text_array2, dict, alignment_options, DELA) {
             for (var y = 0; y < dict.min_max.length; y++) {
-                await update_progress_amount(y / (dict.min_max.length));
                 if (dict.min_max[y].min = Infinity) dict.min_max[y] = {min: 0, max: text_array2.length - 1};
                 for (var x = dict.min_max[y].min; x <= dict.min_max[y].max; x++) {
                     dict[dkey(x, y)] = {unpropagated: score(text_array1[y], text_array2[x], alignment_options, DELA)};
@@ -728,7 +652,6 @@
 
         /**
          * Creates a dictionary to store a Levensthein distance matrix.
-         * @async
          * @param {string[]} text_array1 - Array of words
          * @param {string[]} text_array2 - Array of words
          * @param {wordobj[]} wordobj_array_1 - The full wordobj array of text 1 (y axis)
@@ -737,32 +660,27 @@
          * @param {dela_dict} DELA
          * @returns {dict}
         */
-        async function create_dict (text_array1, text_array2, wordobj_array_1, wordobj_array_2, alignment_options, DELA) {
-            await update_progress_text("Creating dictionary ...");
-            await update_progress_amount(0);
+        function create_dict (text_array1, text_array2, wordobj_array_1, wordobj_array_2, alignment_options, DELA) {
             var cost_dict = {min_max: new Array(text_array1.length)};
             for (var i = 0; i < text_array1.length; i++) cost_dict.min_max[i] = {min: Infinity, max: -Infinity};
-            await make_dict_boundaries(text_array1, text_array2, cost_dict, 50, 160000);
-            await calculate_and_propagate(wordobj_array_1, wordobj_array_2, cost_dict, alignment_options, DELA);
+            make_dict_boundaries(text_array1, text_array2, cost_dict, 50, 160000);
+            calculate_and_propagate(wordobj_array_1, wordobj_array_2, cost_dict, alignment_options, DELA);
             return cost_dict;
         }
 
         /**
          * Returns an array of result blocks corresponding to the best path available.
-         * @async
          * @param {!dict} dict - The fully propagated dictionary used
          * @param {!string[]} text_array1 - The full word array for text 1 (on the y axis)
          * @param {!string[]} text_array2 - The full word array for text 2 (on the x axis)
          * @param {alignmentOptions} alignment_options
          * @returns {wordblock[]}
         */
-        async function make_out_path(dict, text_array1, text_array2, alignment_options) {   
-            await update_progress_text("Finding path ...");
+        function make_out_path(dict, text_array1, text_array2, alignment_options) {   
             let result_array = new Array();
             let x = text_array2.length - 1;
             let y = text_array1.length - 1;
             while (x >= -1 && y >= -1) {
-                await update_progress_amount(1 - (x + y + 2) / (text_array1.length + text_array2.length));
                 if (x <= -1) {
                     if (y <= -1) break;
                     for (var i = y; i >= 0; i--) result_array.push({label: 2, left: text_array1[i], right: ""});
@@ -817,16 +735,13 @@
 
         /**
          * Fuses blocks of similar nature and adds punctuation.
-         * @async
          * @param {wordblock[]} text_array - The non-fused path
          * @param {string} text1 - The full first text (on the y axis)
          * @param {string} text2 - The full second text (on the x axis)
          * @param {alignmentOptions} alignment_options
          * @returns {wordblock[]}
         */
-        async function alt_bring_text_back(text_array, text1, text2, alignment_options) {
-            await update_progress_text("Creating result display ...");
-            await update_progress_amount(0);
+        function alt_bring_text_back(text_array, text1, text2, alignment_options) {
             /** @type {wordblock[]} */
             let result_array = new Array(0);
             if (alignment_options.punct) {
@@ -842,9 +757,7 @@
                     result_array.push({label: 4, left: "", right: punct_array_2[pt_2]});
                     pt_2++;
                 }
-                for (var i = 0; i < text_array.length; i++) {
-                    await update_progress_amount(i / text_array.length);
-                    let block = text_array[i];
+                for (var block of text_array) {
                     result_array.push(block);
                     if ((block.label != 3) && (pt_1 < punct_array_1.length)) {result_array.push({label:4, left: punct_array_1[pt_1], right: ""}); pt_1++;}
                     if ((block.label != 2) && (pt_2 < punct_array_2.length)) {result_array.push({label:4, left: "", right: punct_array_2[pt_2]}); pt_2++;}
@@ -883,14 +796,11 @@
 
         /**
          * Creates spans in the result display panels.
-         * @async
          * @param {wordblock[]} text_array - The path
         */
-        async function make_spans(text_array) {
-            await update_progress_text("Displaying results ...");
+        function make_spans(text_array) {
             let span_id = 0;
             for (var i=0; i<text_array.length; i++) {
-                await update_progress_amount(i / text_array.length);
                 let block = text_array[i];
                 span_id++;
                 let classes = int_to_type(block.label).split(" ");
@@ -927,9 +837,8 @@
 
         /**
          * Changes the page setup to display the loading screen.
-         * @async
         */
-        async function change_to_loading_screen() {
+        function change_to_loading_screen() {
             document.querySelectorAll("textarea").forEach(element => {
                 element.style.display = "none";
             });
@@ -937,8 +846,6 @@
             document.querySelectorAll(".checkbox_container").forEach(element => {
                 element.style.display = "none"
             });
-            document.querySelector("#progress_bar").style.display = "initial";
-            return;
         }
 
         /**
@@ -975,7 +882,6 @@
          * Changes the page setup to display the results.
         */
         function change_to_result_screen() {
-            document.querySelector("#progress_bar").style.display = "none";
             document.querySelectorAll(".panel").forEach(element => {
                 element.style.display = "block";
             });
@@ -1004,7 +910,6 @@
          * @returns {dela_dict}
         */
         async function load_dela() {
-            await update_progress_text("Downloading JSON ...");
             return fetch(new Request("https://maxb9f.github.io/COATL-LIGM/data/dela.txt.json", {method: 'GET'}))
             .then(response => response.json());
         }
@@ -1053,17 +958,16 @@
                 var ta1 = (alignment_options.punct) ? string_to_words(left_text) : string_interlace(left_text);
                 var ta2 = (alignment_options.punct) ? string_to_words(right_text) : string_interlace(right_text);
                 if (ta1.length == 0 || ta2.length == 0) return;
-                await change_to_loading_screen();
-                //const DELA = (alignment_options.dela) ? ((DELA_string != null) ? JSON.parse(DELA_string) : await load_dela()) : null;
-                const DELA = null;
+                change_to_loading_screen();
+                const DELA = (alignment_options.dela) ? ((DELA_string != null) ? JSON.parse(DELA_string) : await load_dela()) : null;
                 if (DELA_string == null && DELA != null) localStorage.setItem("dela", JSON.stringify(DELA));
                 var wa1 = text_array_to_wordobj_array(ta1, DELA);
                 var wa2 = text_array_to_wordobj_array(ta2, DELA);
-                var levenshtein_dict = await create_dict(ta1, ta2, wa1, wa2, alignment_options, DELA);
-                var path_ta = await make_out_path(levenshtein_dict, ta1, ta2, alignment_options);
+                var levenshtein_dict = create_dict(ta1, ta2, wa1, wa2, alignment_options, DELA);
+                var path_ta = make_out_path(levenshtein_dict, ta1, ta2, alignment_options);
                 path_ta.reverse();
-                path_ta = await alt_bring_text_back(path_ta, left_text, right_text, alignment_options);
-                await make_spans(path_ta);
+                path_ta = alt_bring_text_back(path_ta, left_text, right_text, alignment_options);
+                make_spans(path_ta);
                 change_to_result_screen();
             });
         }, {once: true});
@@ -1092,7 +996,6 @@
             <textarea autocomplete="off" minlength="1" spellcheck="false" id="right_textarea" placeholder="La seconde version du texte"></textarea>
             <div class="panel" id="left_panel"></div>
             <div class="panel" id="right_panel"></div>
-            <div id="progress_bar"><div id="progress_amount"></div><div id="progress_text"></div></div>
         </div>
         <div class="box" id="button_box">
             <!--<div class="checkbox_container">
