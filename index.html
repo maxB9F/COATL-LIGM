@@ -855,6 +855,7 @@
         function download_results() {
             var new_document = document.implementation.createHTMLDocument("Résultats");
             new_document.documentElement.lang = document.documentElement.lang;
+            new_document.head.appendChild(new_document.importNode(document.querySelector("meta")));
             new_document.body.appendChild(new_document.importNode(document.querySelector("style")));
             new_document.querySelector("style").innerHTML = document.querySelector("style").innerHTML;
             new_document.body.appendChild(new_document.importNode(document.querySelector("header"), true));
@@ -979,7 +980,7 @@
     <header>
         <div id="logo_div">
             <a href="./index.html" id="logo_anchor">
-                <img width="90" height="90" src="./logoIGM-300x298.png" alt="Laboratoire d'Informatique Gaspard-Monge" decoding="async">
+                <img height="90" src="https://siteigm.univ-mlv.fr/wp-content/uploads/2021/10/LIGM-CMJN-couleurs-300dpi-1.png" alt="Laboratoire d'Informatique Gaspard-Monge" decoding="async">
             </a>
         </div>
         <div id="titlediv">
